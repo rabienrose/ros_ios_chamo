@@ -44,10 +44,15 @@
                                     <action selector="start_record:" destination="BYZ-38-t0r" eventType="touchUpInside" id="4sN-9d-3sa"/>
                                 </connections>
                             </button>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Jgd-XV-fOQ">
+                                <rect key="frame" x="16" y="96" width="343" height="200"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                            </imageView>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
                     <connections>
+                        <outlet property="imgView" destination="Jgd-XV-fOQ" id="ZL5-yc-Ian"/>
                         <outlet property="ip_text_field" destination="hQC-Vf-svC" id="0Az-Ax-BgO"/>
                     </connections>
                 </viewController>

@@ -9,18 +9,143 @@
 #import "ViewController.h"
 #import <ifaddrs.h>
 #import <arpa/inet.h>
+#include <opencv2/opencv.hpp>
+#include "common_header.h"
+#include <save_bag/img_chamo.h>
 
 @interface ViewController ()
 @end
 
 @implementation ViewController
 @synthesize defaults, ip_text_field;
+@synthesize imgView;
+
+    
+- (void)setupVideoSession
+{
+    NSError *error = nil;
+    AVCaptureSession *session = [[AVCaptureSession alloc] init];
+    session.sessionPreset = AVCaptureSessionPreset640x480;
+    NSArray *devices = [AVCaptureDevice devices];
+    AVCaptureDevice *myDevice;
+    for (AVCaptureDevice *device in devices) {
+        if ([device hasMediaType:AVMediaTypeVideo]) {
+            if ([device position] == AVCaptureDevicePositionBack) {
+                myDevice =device;
+            }
+        }
+    }
+    
+    if ([myDevice isFocusModeSupported:AVCaptureFocusModeLocked]) {
+        NSError *error = nil;
+        if ([myDevice lockForConfiguration:&error]) {
+            myDevice.focusMode = AVCaptureFocusModeLocked;
+            [myDevice unlockForConfiguration];
+        }
+    }
+    if ([myDevice isExposureModeSupported:AVCaptureExposureModeLocked]) {
+        NSError *error = nil;
+        if ([myDevice lockForConfiguration:&error]) {
+            myDevice.exposureMode = AVCaptureExposureModeLocked;
+            [myDevice unlockForConfiguration];
+        }
+    }
+    AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:myDevice error:&error];
+    if (!input){
+        NSLog(@"Device input wrong!!");
+    }
+    if ([session canAddInput:input]) {
+        [session addInput:input];
+    }else {
+        NSLog(@"add device wrong!!!");
+    }
+    video_output = [[AVCaptureVideoDataOutput alloc] init];
+    NSDictionary *newSettings = @{ (NSString *)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA) };
+    video_output.videoSettings = newSettings;
+    video_output.minFrameDuration = CMTimeMake(1, 10);
+    [video_output setAlwaysDiscardsLateVideoFrames:YES];
+    if ([session canAddOutput:video_output]) {
+        [session addOutput:video_output];
+    }else {
+        NSLog(@"add output wrong!!!");
+    }
+    
+    dispatch_queue_t videoDataOutputQueue = dispatch_queue_create("VideoDataOutputQueue", DISPATCH_QUEUE_SERIAL);
+    [video_output setSampleBufferDelegate:self queue:videoDataOutputQueue];
+    
+    AVCaptureVideoPreviewLayer *previewLayer = nil;
+    previewLayer = [[AVCaptureVideoPreviewLayer alloc] initWithSession:session];
+    //[previewLayer setVideoGravity:AVLayerVideoGravityResizeAspect];
+    CGRect layerRect = [[imgView layer] bounds];
+    [previewLayer setBounds:layerRect];
+    previewLayer.orientation = AVCaptureVideoOrientationLandscapeRight;
+    [previewLayer setPosition:CGPointMake(CGRectGetMidX(layerRect),CGRectGetMidY(layerRect))];
+    [[imgView layer] addSublayer:previewLayer];
+    [session startRunning];
+}
+    
+- (void)captureOutput:(AVCaptureOutput *)captureOutput
+didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
+       fromConnection:(AVCaptureConnection *)connection {
+    if(need_record==true){
+        img_count++;
+        CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+        //NSLog(@"%f", timestamp.value/(double)timestamp.timescale);
+        UIImage *image = [self imageFromSampleBuffer:sampleBuffer];
+        cv::Mat img_cv = [mm_Try cvMatFromUIImage:image];
+        std::vector<unsigned char> binaryBuffer_;
+        cv::imencode(".jpg", img_cv, binaryBuffer_);
+        save_bag::img_chamo img_msg;
+        img_msg.jpg=binaryBuffer_;
+        img_msg.absTimestamp=(timestamp.value/(double)timestamp.timescale)*1000;
+        img_msg.frame_id=img_count;
+        img_chamo_pub.publish(img_msg);
+    }
+}
+    
+    // Create a UIImage from sample buffer data
+- (UIImage *) imageFromSampleBuffer:(CMSampleBufferRef) sampleBuffer
+{
+    // Get a CMSampleBuffer's Core Video image buffer for the media data
+    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    // Lock the base address of the pixel buffer
+    CVPixelBufferLockBaseAddress(imageBuffer, 0);
+    
+    // Get the number of bytes per row for the pixel buffer
+    void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
+    
+    // Get the number of bytes per row for the pixel buffer
+    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
+    // Get the pixel buffer width and height
+    size_t width = CVPixelBufferGetWidth(imageBuffer);
+    size_t height = CVPixelBufferGetHeight(imageBuffer);
+    
+    // Create a device-dependent RGB color space
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    
+    // Create a bitmap graphics context with the sample buffer data
+    CGContextRef context = CGBitmapContextCreate(baseAddress, width, height, 8,
+                                                 bytesPerRow, colorSpace, kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst);
+    // Create a Quartz image from the pixel data in the bitmap graphics context
+    CGImageRef quartzImage = CGBitmapContextCreateImage(context);
+    // Unlock the pixel buffer
+    CVPixelBufferUnlockBaseAddress(imageBuffer,0);
+    
+    // Free up the context and color space
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+    
+    // Create an image object from the Quartz image
+    UIImage *image = [UIImage imageWithCGImage:quartzImage];
+    //UIImage *image = [UIImage imageWithCGImage:quartzImage scale:1.0f orientation:UIImageOrientationRight];
+    // Release the Quartz image
+    CGImageRelease(quartzImage);
+    
+    return image;
+}
     
 - (IBAction)start_record:(id)sender{
-    NSLog(@"press me!!");
-    std_msgs::String s_msg;
-    s_msg.data="hello world!";
-    text_chamo_pub.publish(s_msg);
+    need_record=!need_record;
 }
 - (IBAction)ip_edit_ended:(id)sender{
     [defaults setObject:[ip_text_field.attributedText string] forKey:@"master_uri"];
@@ -30,9 +155,11 @@
     
 - (void)viewDidLoad {
     [super viewDidLoad];
+    need_record=false;
+    img_count=0;
     defaults = [NSUserDefaults standardUserDefaults];
     [ip_text_field setText:[defaults objectForKey:@"master_uri"]];
-    [self connectToMaster];
+    [self setupVideoSession];
 }
 
 
@@ -98,7 +225,7 @@
             {
                 NSLog(@"Connected to the ROS master !");
                 ros::NodeHandle nn;
-                text_chamo_pub = nn.advertise<std_msgs::String>("Gps", 1, true);
+                img_chamo_pub = nn.advertise<save_bag::img_chamo>("img_chamo", 10000, false);
             }
             else
             {

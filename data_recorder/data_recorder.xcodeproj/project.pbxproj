@@ -23,6 +23,10 @@
 		CE00FBAD205D6EDC00682E6F /* libxmlrpcpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE00FBA5205D6EDC00682E6F /* libxmlrpcpp.a */; };
 		CE00FBAF205D6EF200682E6F /* libconsole_bridge.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE00FBAE205D6EF200682E6F /* libconsole_bridge.a */; };
 		CE00FBB1205D6F0000682E6F /* boost.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE00FBB0205D6F0000682E6F /* boost.a */; };
+		CEDEB6B2205E7FD000782DAC /* try_mm.mm in Sources */ = {isa = PBXBuildFile; fileRef = CEDEB6B1205E7FD000782DAC /* try_mm.mm */; };
+		CEDEB6B6205E810900782DAC /* opencv2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CEDEB6B5205E810900782DAC /* opencv2.framework */; };
+		CEDEB6BA205E948900782DAC /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CEDEB6B9205E948900782DAC /* AVFoundation.framework */; };
+		CEDEB6BC205E94D300782DAC /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CEDEB6BB205E94D300782DAC /* CoreMedia.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +50,13 @@
 		CE00FBA5205D6EDC00682E6F /* libxmlrpcpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libxmlrpcpp.a; path = ../lib/libxmlrpcpp.a; sourceTree = "<group>"; };
 		CE00FBAE205D6EF200682E6F /* libconsole_bridge.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libconsole_bridge.a; path = ../thirdparty/console_bridge/build/lib/Release/libconsole_bridge.a; sourceTree = "<group>"; };
 		CE00FBB0205D6F0000682E6F /* boost.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = boost.a; path = ../thirdparty/boost/ios/boost.a; sourceTree = "<group>"; };
+		CEDEB6B0205E7FD000782DAC /* common_header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common_header.h; sourceTree = "<group>"; };
+		CEDEB6B1205E7FD000782DAC /* try_mm.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = try_mm.mm; sourceTree = "<group>"; };
+		CEDEB6B3205E80E400782DAC /* thirdparty */ = {isa = PBXFileReference; lastKnownFileType = folder; name = thirdparty; path = ../thirdparty; sourceTree = "<group>"; };
+		CEDEB6B5205E810900782DAC /* opencv2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = opencv2.framework; path = ../thirdparty/opencv2.framework; sourceTree = "<group>"; };
+		CEDEB6B7205E946200782DAC /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		CEDEB6B9205E948900782DAC /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		CEDEB6BB205E94D300782DAC /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +64,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CEDEB6BC205E94D300782DAC /* CoreMedia.framework in Frameworks */,
+				CEDEB6BA205E948900782DAC /* AVFoundation.framework in Frameworks */,
+				CEDEB6B6205E810900782DAC /* opencv2.framework in Frameworks */,
 				CE00FBB1205D6F0000682E6F /* boost.a in Frameworks */,
 				CE00FBAF205D6EF200682E6F /* libconsole_bridge.a in Frameworks */,
 				CE00FBA6205D6EDC00682E6F /* libcpp_common.a in Frameworks */,
@@ -89,6 +103,8 @@
 		CE00FB85205D6E7B00682E6F /* data_recorder */ = {
 			isa = PBXGroup;
 			children = (
+				CEDEB6B0205E7FD000782DAC /* common_header.h */,
+				CEDEB6B1205E7FD000782DAC /* try_mm.mm */,
 				CE00FB89205D6E7B00682E6F /* AppDelegate.h */,
 				CE00FB8A205D6E7B00682E6F /* AppDelegate.m */,
 				CE00FB8C205D6E7B00682E6F /* ViewController.h */,
@@ -113,6 +129,11 @@
 		CE00FB9D205D6EDC00682E6F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				CEDEB6BB205E94D300782DAC /* CoreMedia.framework */,
+				CEDEB6B9205E948900782DAC /* AVFoundation.framework */,
+				CEDEB6B7205E946200782DAC /* CoreFoundation.framework */,
+				CEDEB6B5205E810900782DAC /* opencv2.framework */,
+				CEDEB6B3205E80E400782DAC /* thirdparty */,
 				CE00FBB0205D6F0000682E6F /* boost.a */,
 				CE00FBAE205D6EF200682E6F /* libconsole_bridge.a */,
 				CE00FB9E205D6EDC00682E6F /* libcpp_common.a */,
@@ -200,6 +221,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CE00FB8E205D6E7B00682E6F /* ViewController.mm in Sources */,
+				CEDEB6B2205E7FD000782DAC /* try_mm.mm in Sources */,
 				CE00FB8B205D6E7B00682E6F /* AppDelegate.m in Sources */,
 				CE00FB88205D6E7B00682E6F /* main.m in Sources */,
 			);
@@ -321,6 +343,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = Q84JA4R9R7;
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../thirdparty\"";
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../include\"",
 					"\"$(SRCROOT)/../thirdparty/console_bridge/include\"",
@@ -344,6 +367,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = Q84JA4R9R7;
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../thirdparty\"";
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../include\"",
 					"\"$(SRCROOT)/../thirdparty/console_bridge/include\"",
@@ -380,6 +404,7 @@
 				CE00FB9C205D6E7B00682E6F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

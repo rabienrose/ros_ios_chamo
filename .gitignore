@@ -8,6 +8,13 @@ DerivedData/
 
 boost/
 lib/
+opencv2.framework/
+devel/
+.catkin_workspace
+.built_by
+.catkin
+.rosinstall
+*~
 
 ## Various settings
 *.pbxuser

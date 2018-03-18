@@ -10,11 +10,20 @@
 #import <ros/ros.h>
 #include "std_msgs/String.h"
 
-@interface ViewController : UIViewController{
-    ros::Publisher text_chamo_pub;
+#import <QuartzCore/QuartzCore.h>
+#import <CoreMotion/CoreMotion.h>
+#import <CoreMedia/CoreMedia.h>
+#import <AVFoundation/AVFoundation.h>
+
+@interface ViewController : UIViewController<AVCaptureVideoDataOutputSampleBufferDelegate>{
+    ros::Publisher img_chamo_pub;
+    AVCaptureVideoDataOutput *video_output;
+    bool need_record;
+    int img_count;
 }
 @property (strong, nonatomic) NSUserDefaults *defaults;
 @property (weak, nonatomic) IBOutlet UITextField *ip_text_field;
+@property (weak, nonatomic) IBOutlet UIImageView *imgView;
     
 - (IBAction)ip_edit_ended:(id)sender;
 - (IBAction)start_record:(id)sender;
