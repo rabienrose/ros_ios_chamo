@@ -1,0 +1,7 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+add_subdirectory(rosconsole/)
+add_subdirectory(roscpp/)
+add_subdirectory(roscpp_serialization/)
+add_subdirectory(cpp_common/)
+add_subdirectory(rostime/)
+add_subdirectory(xmlrpcpp/)
