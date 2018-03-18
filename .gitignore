@@ -6,6 +6,9 @@
 build/
 DerivedData/
 
+boost/
+lib/
+
 ## Various settings
 *.pbxuser
 !default.pbxuser

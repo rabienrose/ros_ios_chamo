@@ -13,11 +13,14 @@
 @interface ViewController : UIViewController{
     ros::Publisher text_chamo_pub;
 }
+@property (strong, nonatomic) NSUserDefaults *defaults;
 @property (weak, nonatomic) IBOutlet UITextField *ip_text_field;
     
 - (IBAction)ip_edit_ended:(id)sender;
+- (IBAction)start_record:(id)sender;
 + (NSString *)getIPAddress;
 + (BOOL)isValidIp:(NSString*)string;
+- (BOOL)connectToMaster;
 
 
 @end

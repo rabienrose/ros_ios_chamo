@@ -1,3 +1,4 @@
+mkdir lib
 cp ./build/cpp_common/Release-iphoneos/libcpp_common.a lib
 cp ./build/rosconsole/Release-iphoneos/librosconsole_backend_interface.a lib
 cp ./build/rosconsole/Release-iphoneos/librosconsole_print.a lib
