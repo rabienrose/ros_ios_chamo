@@ -9,17 +9,19 @@
 #import "ViewController.h"
 #import <ifaddrs.h>
 #import <arpa/inet.h>
-#include <opencv2/opencv.hpp>
 #include "common_header.h"
-#include <save_bag/img_chamo.h>
-
+#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/image_encodings.h>
+#include <opencv2/opencv.hpp>
+#include <iomanip>
 @interface ViewController ()
 @end
 
 @implementation ViewController
 @synthesize defaults, ip_text_field;
 @synthesize imgView;
-
+CMMotionManager *motionManager;
     
 - (void)setupVideoSession
 {
@@ -62,7 +64,7 @@
     video_output = [[AVCaptureVideoDataOutput alloc] init];
     NSDictionary *newSettings = @{ (NSString *)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA) };
     video_output.videoSettings = newSettings;
-    video_output.minFrameDuration = CMTimeMake(1, 10);
+    video_output.minFrameDuration = CMTimeMake(1, 20);
     [video_output setAlwaysDiscardsLateVideoFrames:YES];
     if ([session canAddOutput:video_output]) {
         [session addOutput:video_output];
@@ -81,25 +83,34 @@
     previewLayer.orientation = AVCaptureVideoOrientationLandscapeRight;
     [previewLayer setPosition:CGPointMake(CGRectGetMidX(layerRect),CGRectGetMidY(layerRect))];
     [[imgView layer] addSublayer:previewLayer];
-    [session startRunning];
+    //[session startRunning];
 }
     
 - (void)captureOutput:(AVCaptureOutput *)captureOutput
 didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
        fromConnection:(AVCaptureConnection *)connection {
-    if(need_record==true){
-        img_count++;
+    //NSLog(@"img: %f", timestamp.value/(double)timestamp.timescale);
+    if(false){
+    //if(need_record==true){
+        sensor_msgs::Image img_ros_img;
         CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
         //NSLog(@"%f", timestamp.value/(double)timestamp.timescale);
         UIImage *image = [self imageFromSampleBuffer:sampleBuffer];
         cv::Mat img_cv = [mm_Try cvMatFromUIImage:image];
-        std::vector<unsigned char> binaryBuffer_;
-        cv::imencode(".jpg", img_cv, binaryBuffer_);
-        save_bag::img_chamo img_msg;
-        img_msg.jpg=binaryBuffer_;
-        img_msg.absTimestamp=(timestamp.value/(double)timestamp.timescale)*1000;
-        img_msg.frame_id=img_count;
-        img_chamo_pub.publish(img_msg);
+        cv::Mat img_gray;
+        cv::cvtColor(img_cv, img_gray, CV_BGRA2GRAY);
+        img_ros_img.height=img_gray.cols;
+        img_ros_img.width=img_gray.rows;
+        img_ros_img.encoding=sensor_msgs::image_encodings::TYPE_8UC1;
+        img_ros_img.is_bigendian=false;
+        img_ros_img.step=1*img_ros_img.width;
+        img_ros_img.data.assign(img_cv.data, img_cv.data+img_ros_img.step*img_ros_img.height);
+        float time_in_sec = timestamp.value/(double)timestamp.timescale;
+        img_ros_img.header.frame_id=img_count;
+        img_ros_img.header.stamp.sec=floor(time_in_sec);
+        img_ros_img.header.stamp.nsec=time_in_sec-floor(time_in_sec);
+        imu_pub.publish(img_ros_img);
+        img_count++;
     }
 }
     
@@ -152,13 +163,129 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [defaults synchronize];
     [self connectToMaster];
 }
-    
+
+void interDouble(double v1, double v2, double t1, double t2, double& v3_out, double t3){
+    v3_out=v1+(v2-v1)*(t3-t1)/(t2-t1);
+}
+
+void processIMUData(std::vector<std::vector<double>>& query, std::vector<std::vector<double>>& test, std::vector<sensor_msgs::Imu>& msgs, bool test_is_acce){
+    int last_entry=-1;
+    int test_size=test.size();
+    int query_size=query.size();
+    for(int i=0; i<test_size;i++){
+        if(test[i][4]>0.5){
+            continue;
+        }
+        for(int j=0; j<query_size-1;j++){
+            if(test[i][3]>query[j][3] && test[i][3]<=query[j+1][3]){
+                sensor_msgs::Imu msg;
+                double x,y,z;
+                //std::cout<<query[j][0]<<" : "<<query[j+1][0]<<" : "<<query[j][3]<<std::endl;
+                interDouble(query[j][0], query[j+1][0], query[j][3], query[j+1][3], x, test[i][3]);
+                interDouble(query[j][1], query[j+1][1], query[j][3], query[j+1][3], y, test[i][3]);
+                interDouble(query[j][2], query[j+1][2], query[j][3], query[j+1][3], z, test[i][3]);
+                //std::cout<<std::setprecision(20)<<query[j][0]<<" : "<<x<<" : "<<query[j+1][0]<<" | "<<query[j][3]<<" : "<<test[i][3]<<" : "<<query[j+1][3]<<std::endl;
+                if(test_is_acce){
+                    msg.linear_acceleration.x=test[i][0];
+                    msg.linear_acceleration.y=test[i][1];
+                    msg.linear_acceleration.z=test[i][2];
+                    msg.angular_velocity.x=x;
+                    msg.angular_velocity.y=y;
+                    msg.angular_velocity.z=z;
+                }else{
+                    msg.linear_acceleration.x=x;
+                    msg.linear_acceleration.y=y;
+                    msg.linear_acceleration.z=z;
+                    msg.angular_velocity.x=test[i][0];
+                    msg.angular_velocity.y=test[i][1];
+                    msg.angular_velocity.z=test[i][2];
+                }
+                static int imu_data_seq=0;
+                msg.header.seq=imu_data_seq;
+                msg.header.stamp.sec=floor(test[i][3]);
+                msg.header.stamp.nsec=test[i][3]-floor(test[i][3]);
+                msgs.push_back(msg);
+                imu_data_seq++;
+                test[i][4]=1;
+                //std::cout<<std::setprecision(20)<<msg.linear_acceleration.x<<","<<msg.linear_acceleration.y<<","<<test[i][3]<<std::endl;
+                //NSLog(@"ax: %f, ay: %f, az: %f, gx: %f, gy: %f, gz: %f, t: %f", msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z, msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z, test[i][3]);
+                last_entry=j;
+                break;
+            }
+        }
+    }
+    //std::cout<<last_entry<<" : "<<test.size()<<std::endl;
+    if(last_entry>0){
+        if(last_entry-1<query.size()){
+            query.erase(query.begin(), query.begin()+last_entry-1);
+        }else{
+            NSLog(@"test overflow");
+        }
+    }
+}
+
+- (void)processIMU{
+    std::vector<sensor_msgs::Imu> msgs;
+    processIMUData(gyros, acces, msgs, true);
+    //std::cout<<gyros.size()<<" : "<<acces.size()<<std::endl;
+    processIMUData(acces, gyros, msgs, false);
+    //std::cout<<gyros.size()<<" : "<<acces.size()<<std::endl;
+    for(int i=0;i<msgs.size();i++){
+        imu_pub.publish(msgs[i]);
+    }
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     need_record=false;
     img_count=0;
+    imu_count=0;
     defaults = [NSUserDefaults standardUserDefaults];
     [ip_text_field setText:[defaults objectForKey:@"master_uri"]];
+    motionManager = [[CMMotionManager alloc] init];
+    NSOperationQueue *quene =[[NSOperationQueue alloc] init];
+    quene.maxConcurrentOperationCount=1;
+    if (motionManager.accelerometerAvailable){
+        motionManager.accelerometerUpdateInterval =0.01;
+        [motionManager
+         startAccelerometerUpdatesToQueue:quene
+         withHandler:
+         ^(CMAccelerometerData *data, NSError *error){
+             if(need_record==true){
+                 std::vector<double> imu;
+                 imu.resize(5);
+                 imu[0]=data.acceleration.x;
+                 imu[1]=data.acceleration.y;
+                 imu[2]=data.acceleration.z;
+                 imu[3]=data.timestamp;
+                 imu[4]=0;
+                 //std::cout<<"acce"<<" : "<<data.timestamp<<std::endl;
+                 acces.push_back(imu);
+                 [self processIMU];
+             }
+             
+         }];
+    }
+    if (motionManager.gyroAvailable){
+        motionManager.gyroUpdateInterval =0.01;
+        [motionManager
+         startGyroUpdatesToQueue:quene
+         withHandler:
+         ^(CMGyroData *data, NSError *error){
+             if(need_record==true){
+                 std::vector<double> imu;
+                 imu.resize(5);
+                 imu[0]=data.rotationRate.x;
+                 imu[1]=data.rotationRate.y;
+                 imu[2]=data.rotationRate.z;
+                 imu[3]=data.timestamp;
+                 imu[4]=0;
+                 //std::cout<<"gyros"<<" : "<<data.timestamp<<std::endl;
+                 gyros.push_back(imu);
+                 [self processIMU];
+             }
+         }];
+    }
     [self setupVideoSession];
 }
 
@@ -225,7 +352,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             {
                 NSLog(@"Connected to the ROS master !");
                 ros::NodeHandle nn;
-                img_chamo_pub = nn.advertise<save_bag::img_chamo>("img_chamo", 10000, false);
+                img_pub = nn.advertise<sensor_msgs::Image>("/cam0/image_raw", 10000, false);
+                imu_pub = nn.advertise<sensor_msgs::Imu>("/imu0", 10000, false);
             }
             else
             {

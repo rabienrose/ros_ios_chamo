@@ -23,6 +23,7 @@
 		CE00FBAD205D6EDC00682E6F /* libxmlrpcpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE00FBA5205D6EDC00682E6F /* libxmlrpcpp.a */; };
 		CE00FBAF205D6EF200682E6F /* libconsole_bridge.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE00FBAE205D6EF200682E6F /* libconsole_bridge.a */; };
 		CE00FBB1205D6F0000682E6F /* boost.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CE00FBB0205D6F0000682E6F /* boost.a */; };
+		CE71E3852081CBCB0028705F /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE71E3842081CBCB0028705F /* CoreMotion.framework */; };
 		CEDEB6B2205E7FD000782DAC /* try_mm.mm in Sources */ = {isa = PBXBuildFile; fileRef = CEDEB6B1205E7FD000782DAC /* try_mm.mm */; };
 		CEDEB6B6205E810900782DAC /* opencv2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CEDEB6B5205E810900782DAC /* opencv2.framework */; };
 		CEDEB6BA205E948900782DAC /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CEDEB6B9205E948900782DAC /* AVFoundation.framework */; };
@@ -50,6 +51,7 @@
 		CE00FBA5205D6EDC00682E6F /* libxmlrpcpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libxmlrpcpp.a; path = ../lib/libxmlrpcpp.a; sourceTree = "<group>"; };
 		CE00FBAE205D6EF200682E6F /* libconsole_bridge.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libconsole_bridge.a; path = ../thirdparty/console_bridge/build/lib/Release/libconsole_bridge.a; sourceTree = "<group>"; };
 		CE00FBB0205D6F0000682E6F /* boost.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = boost.a; path = ../thirdparty/boost/ios/boost.a; sourceTree = "<group>"; };
+		CE71E3842081CBCB0028705F /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		CEDEB6B0205E7FD000782DAC /* common_header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common_header.h; sourceTree = "<group>"; };
 		CEDEB6B1205E7FD000782DAC /* try_mm.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = try_mm.mm; sourceTree = "<group>"; };
 		CEDEB6B3205E80E400782DAC /* thirdparty */ = {isa = PBXFileReference; lastKnownFileType = folder; name = thirdparty; path = ../thirdparty; sourceTree = "<group>"; };
@@ -64,6 +66,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE71E3852081CBCB0028705F /* CoreMotion.framework in Frameworks */,
 				CEDEB6BC205E94D300782DAC /* CoreMedia.framework in Frameworks */,
 				CEDEB6BA205E948900782DAC /* AVFoundation.framework in Frameworks */,
 				CEDEB6B6205E810900782DAC /* opencv2.framework in Frameworks */,
@@ -129,6 +132,7 @@
 		CE00FB9D205D6EDC00682E6F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				CE71E3842081CBCB0028705F /* CoreMotion.framework */,
 				CEDEB6BB205E94D300782DAC /* CoreMedia.framework */,
 				CEDEB6B9205E948900782DAC /* AVFoundation.framework */,
 				CEDEB6B7205E946200782DAC /* CoreFoundation.framework */,
