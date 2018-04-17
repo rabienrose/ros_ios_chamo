@@ -168,70 +168,204 @@ void interDouble(double v1, double v2, double t1, double t2, double& v3_out, dou
     v3_out=v1+(v2-v1)*(t3-t1)/(t2-t1);
 }
 
-void processIMUData(std::vector<std::vector<double>>& query, std::vector<std::vector<double>>& test, std::vector<sensor_msgs::Imu>& msgs, bool test_is_acce){
-    int last_entry=-1;
-    int test_size=test.size();
-    int query_size=query.size();
-    for(int i=0; i<test_size;i++){
-        if(test[i][4]>0.5){
-            continue;
-        }
-        for(int j=0; j<query_size-1;j++){
-            if(test[i][3]>query[j][3] && test[i][3]<=query[j+1][3]){
-                sensor_msgs::Imu msg;
-                double x,y,z;
-                //std::cout<<query[j][0]<<" : "<<query[j+1][0]<<" : "<<query[j][3]<<std::endl;
-                interDouble(query[j][0], query[j+1][0], query[j][3], query[j+1][3], x, test[i][3]);
-                interDouble(query[j][1], query[j+1][1], query[j][3], query[j+1][3], y, test[i][3]);
-                interDouble(query[j][2], query[j+1][2], query[j][3], query[j+1][3], z, test[i][3]);
-                //std::cout<<std::setprecision(20)<<query[j][0]<<" : "<<x<<" : "<<query[j+1][0]<<" | "<<query[j][3]<<" : "<<test[i][3]<<" : "<<query[j+1][3]<<std::endl;
-                if(test_is_acce){
-                    msg.linear_acceleration.x=test[i][0];
-                    msg.linear_acceleration.y=test[i][1];
-                    msg.linear_acceleration.z=test[i][2];
-                    msg.angular_velocity.x=x;
-                    msg.angular_velocity.y=y;
-                    msg.angular_velocity.z=z;
-                }else{
-                    msg.linear_acceleration.x=x;
-                    msg.linear_acceleration.y=y;
-                    msg.linear_acceleration.z=z;
-                    msg.angular_velocity.x=test[i][0];
-                    msg.angular_velocity.y=test[i][1];
-                    msg.angular_velocity.z=test[i][2];
-                }
-                static int imu_data_seq=0;
-                msg.header.seq=imu_data_seq;
-                msg.header.stamp.sec=floor(test[i][3]);
-                msg.header.stamp.nsec=test[i][3]-floor(test[i][3]);
-                msgs.push_back(msg);
-                imu_data_seq++;
-                test[i][4]=1;
-                //std::cout<<std::setprecision(20)<<msg.linear_acceleration.x<<","<<msg.linear_acceleration.y<<","<<test[i][3]<<std::endl;
-                //NSLog(@"ax: %f, ay: %f, az: %f, gx: %f, gy: %f, gz: %f, t: %f", msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z, msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z, test[i][3]);
-                last_entry=j;
-                break;
-            }
+int getNearFuture(double cur_time, std::vector<std::vector<double>>& data){
+    for (int i=0; i<data.size();i++){
+        if(cur_time<data[i][3]){
+            return i;
         }
     }
-    //std::cout<<last_entry<<" : "<<test.size()<<std::endl;
-    if(last_entry>0){
-        if(last_entry-1<query.size()){
-            query.erase(query.begin(), query.begin()+last_entry-1);
+    return -1;
+}
+
+void getNextTime(double cur_time, std::vector<std::vector<double>>& acce, std::vector<std::vector<double>>& gyro, int& index, bool& is_acce){
+    int acce_id = getNearFuture(cur_time, acce);
+    int gyro_id = getNearFuture(cur_time, gyro);
+    if(acce_id==-1 && gyro_id==-1){
+        index=-1;
+        return;
+    }else{
+        if(gyro_id==-1){
+            index=acce_id;
+            is_acce=true;
+            return;
+        }
+        else if(acce_id==-1){
+            index=gyro_id;
+            is_acce=false;
+            return;
         }else{
-            NSLog(@"test overflow");
+            if(acce[acce_id][3]>gyro[gyro_id][3]){
+                index=gyro_id;
+                is_acce=false;
+                return;
+            }else{
+                index=acce_id;
+                is_acce=true;
+                return;
+            }
         }
     }
 }
 
+void findFirstInter(std::vector<std::vector<double>>& acce, std::vector<std::vector<double>>& gyro, int& index, bool& is_acce){
+    int acce_id=-1;
+    for (int i=0; i<acce.size();i++){
+        if(acce[i][4]==0){
+            acce_id=i;
+            break;
+        }
+    }
+    int gyro_id=-1;
+    for (int i=0; i<gyro.size();i++){
+        if(gyro[i][4]==0){
+            gyro_id=i;
+            break;
+        }
+    }
+    if(acce_id==-1 && gyro_id==-1){
+        index=-1;
+        return;
+    }else{
+        if(gyro_id==-1){
+            index=acce_id;
+            is_acce=true;
+            return;
+        }
+        else if(acce_id==-1){
+            index=gyro_id;
+            is_acce=false;
+            return;
+        }else{
+            if(acce[acce_id][3]>gyro[gyro_id][3]){
+                index=gyro_id;
+                is_acce=false;
+                return;
+            }else{
+                index=acce_id;
+                is_acce=true;
+                return;
+            }
+        }
+    }
+}
+
+int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, std::vector<sensor_msgs::Imu>& msgs, bool test_is_acce){
+    int query_size=query.size();
+    for(int j=0; j<query_size-1;j++){
+        if(test[3]>query[j][3] && test[3]<=query[j+1][3]){
+            sensor_msgs::Imu msg;
+            double x,y,z;
+            //std::cout<<query[j][0]<<" : "<<query[j+1][0]<<" : "<<query[j][3]<<std::endl;
+            interDouble(query[j][0], query[j+1][0], query[j][3], query[j+1][3], x, test[3]);
+            interDouble(query[j][1], query[j+1][1], query[j][3], query[j+1][3], y, test[3]);
+            interDouble(query[j][2], query[j+1][2], query[j][3], query[j+1][3], z, test[3]);
+            //std::cout<<std::setprecision(20)<<query[j][0]<<" : "<<x<<" : "<<query[j+1][0]<<" | "<<query[j][3]<<" : "<<test[i][3]<<" : "<<query[j+1][3]<<std::endl;
+            if(test_is_acce){
+                msg.linear_acceleration.x=test[0];
+                msg.linear_acceleration.y=test[1];
+                msg.linear_acceleration.z=test[2];
+                msg.angular_velocity.x=x;
+                msg.angular_velocity.y=y;
+                msg.angular_velocity.z=z;
+            }else{
+                msg.linear_acceleration.x=x;
+                msg.linear_acceleration.y=y;
+                msg.linear_acceleration.z=z;
+                msg.angular_velocity.x=test[0];
+                msg.angular_velocity.y=test[1];
+                msg.angular_velocity.z=test[2];
+            }
+            static int imu_data_seq=0;
+            msg.header.seq=imu_data_seq;
+            msg.header.stamp.sec=floor(test[3]);
+            msg.header.stamp.nsec=test[3]-floor(test[3]);
+            msgs.push_back(msg);
+            imu_data_seq++;
+            //std::cout<<std::setprecision(20)<<msg.linear_acceleration.x<<","<<msg.linear_acceleration.y<<","<<test[3]<<std::endl;
+            //NSLog(@"ax: %f, ay: %f, az: %f, gx: %f, gy: %f, gz: %f, t: %f", msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z, msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z, test[3]);
+            return j;
+        }
+    }
+    return -1;
+}
+
 - (void)processIMU{
-    std::vector<sensor_msgs::Imu> msgs;
-    processIMUData(gyros, acces, msgs, true);
-    //std::cout<<gyros.size()<<" : "<<acces.size()<<std::endl;
-    processIMUData(acces, gyros, msgs, false);
-    //std::cout<<gyros.size()<<" : "<<acces.size()<<std::endl;
-    for(int i=0;i<msgs.size();i++){
-        imu_pub.publish(msgs[i]);
+    int index_first;
+    bool is_acce_first;
+    findFirstInter(acces, gyros, index_first, is_acce_first);
+    if(index_first!=-1){
+        int last_acc_id=-1;
+        int last_gyro_id=-1;
+        std::vector<sensor_msgs::Imu> msgs;
+        bool first_item=true;
+        while(true){
+            int index;
+            bool is_acce;
+            double cur_time;
+            if(first_item){
+                index=index_first;
+                is_acce=is_acce_first;
+                if(is_acce_first){
+                    cur_time=acces[index_first][3];
+                }else{
+                    cur_time=gyros[index_first][3];
+                }
+                first_item=false;
+            }else{
+                getNextTime(cur_time, acces, gyros, index, is_acce);
+                //std::cout<<index<<std::endl;
+                if(index!=-1){
+                    if(is_acce){
+                        cur_time=acces[index][3];
+                        if(acces[index][4]==1){
+                            continue;
+                        }
+                    }else{
+                        cur_time=gyros[index][3];
+                        if(gyros[index][4]==1){
+                            continue;
+                        }
+                    }
+                }else{
+                    break;
+                }
+                
+            }
+            
+            int query_id;
+            if(is_acce){
+                query_id = tryInter(acces[index], gyros, msgs, true);
+            }else{
+                query_id = tryInter(gyros[index], acces, msgs, false);
+            }
+            if(query_id!=-1){
+                if(is_acce){
+                    acces[index][4]=1;
+                    last_gyro_id=query_id;
+                }else{
+                    gyros[index][4]=1;
+                    last_acc_id=query_id;
+                }
+            }
+        }
+        //std::cout<<last_gyro_id<<"=="<<last_acc_id<<std::endl;
+        for(int i=0;i<msgs.size();i++){
+            imu_pub.publish(msgs[i]);
+        }
+        if(last_acc_id>0){
+            if(last_acc_id-1<acces.size()){
+                acces.erase(acces.begin(), acces.begin()+last_acc_id-1);
+            }else{
+                NSLog(@"test overflow");
+            }
+        }
+        if(last_gyro_id>0){
+            if(last_gyro_id-1<gyros.size()){
+                gyros.erase(gyros.begin(), gyros.begin()+last_gyro_id-1);
+            }else{
+                NSLog(@"test overflow");
+            }
+        }
     }
 }
 
@@ -272,7 +406,7 @@ void processIMUData(std::vector<std::vector<double>>& query, std::vector<std::ve
          startGyroUpdatesToQueue:quene
          withHandler:
          ^(CMGyroData *data, NSError *error){
-             if(need_record==true){
+             if(need_record== true){
                  std::vector<double> imu;
                  imu.resize(5);
                  imu[0]=data.rotationRate.x;
