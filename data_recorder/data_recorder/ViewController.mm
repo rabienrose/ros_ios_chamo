@@ -289,6 +289,57 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
     return -1;
 }
 
+- (void)processIMU_gyro{
+    int last_acc_id=-1;
+    int last_gyro_id=-1;
+    int g_size=gyros.size();
+    int a_size=acces.size();
+    for(int i=0;i<gyros.size();i++){
+        for(int j=0;j<a_size-1;j++){
+            if(gyros[i][3]>acces[j][3] && gyros[i][3]<=acces[j+1][3]){
+                sensor_msgs::Imu msg;
+                double x,y,z;
+                interDouble(acces[j][0], acces[j+1][0], acces[j][3], acces[j+1][3], x, gyros[i][3]);
+                interDouble(acces[j][1], acces[j+1][1], acces[j][3], acces[j+1][3], y, gyros[i][3]);
+                interDouble(acces[j][2], acces[j+1][2], acces[j][3], acces[j+1][3], z, gyros[i][3]);
+                msg.linear_acceleration.x=x;
+                msg.linear_acceleration.y=y;
+                msg.linear_acceleration.z=z;
+                msg.angular_velocity.x=gyros[i][0];
+                msg.angular_velocity.y=gyros[i][1];
+                msg.angular_velocity.z=gyros[i][2];
+                static int imu_data_seq=0;
+                msg.header.seq=imu_data_seq;
+                msg.header.stamp.sec=floor(gyros[i][3]);
+                msg.header.stamp.nsec=gyros[i][3]-floor(gyros[i][3]);
+                //std::cout<<std::setprecision(20)<<msg.linear_acceleration.x<<","<<msg.linear_acceleration.y<<","<<gyros[i][3]<<std::endl;
+                //NSLog(@"ax: %f, ay: %f, az: %f, gx: %f, gy: %f, gz: %f, t: %f", msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z, msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z, gyros[i][3]);
+                imu_pub.publish(msg);
+                imu_data_seq++;
+                last_acc_id=j;
+                last_gyro_id=i;
+                break;
+            }
+        }
+    }
+    if(last_acc_id>0){
+        if(last_acc_id-1<acces.size()){
+            acces.erase(acces.begin(), acces.begin()+last_acc_id);
+        }else{
+            NSLog(@"test overflow");
+        }
+    }
+    if(last_gyro_id>=0){
+        if(last_gyro_id<gyros.size()){
+            gyros.erase(gyros.begin(), gyros.begin()+last_gyro_id+1);
+        }else{
+            NSLog(@"test overflow");
+        }
+    }
+    //
+    
+}
+
 - (void)processIMU{
     int index_first;
     bool is_acce_first;
@@ -354,14 +405,14 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
         }
         if(last_acc_id>0){
             if(last_acc_id-1<acces.size()){
-                acces.erase(acces.begin(), acces.begin()+last_acc_id-1);
+                acces.erase(acces.begin(), acces.begin()+last_acc_id);
             }else{
                 NSLog(@"test overflow");
             }
         }
         if(last_gyro_id>0){
             if(last_gyro_id-1<gyros.size()){
-                gyros.erase(gyros.begin(), gyros.begin()+last_gyro_id-1);
+                gyros.erase(gyros.begin(), gyros.begin()+last_gyro_id);
             }else{
                 NSLog(@"test overflow");
             }
@@ -395,7 +446,7 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
                  imu[4]=0;
                  //std::cout<<"acce"<<" : "<<data.timestamp<<std::endl;
                  acces.push_back(imu);
-                 [self processIMU];
+                 //[self processIMU];
              }
              
          }];
@@ -416,7 +467,7 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
                  imu[4]=0;
                  //std::cout<<"gyros"<<" : "<<data.timestamp<<std::endl;
                  gyros.push_back(imu);
-                 [self processIMU];
+                 [self processIMU_gyro];
              }
          }];
     }
