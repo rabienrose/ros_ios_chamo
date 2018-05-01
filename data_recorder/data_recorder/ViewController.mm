@@ -12,6 +12,7 @@
 #include "common_header.h"
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/CompressedImage.h>
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/opencv.hpp>
 #include <iomanip>
@@ -37,21 +38,7 @@ CMMotionManager *motionManager;
             }
         }
     }
-    
-    if ([myDevice isFocusModeSupported:AVCaptureFocusModeLocked]) {
-        NSError *error = nil;
-        if ([myDevice lockForConfiguration:&error]) {
-            myDevice.focusMode = AVCaptureFocusModeLocked;
-            [myDevice unlockForConfiguration];
-        }
-    }
-    if ([myDevice isExposureModeSupported:AVCaptureExposureModeLocked]) {
-        NSError *error = nil;
-        if ([myDevice lockForConfiguration:&error]) {
-            myDevice.exposureMode = AVCaptureExposureModeLocked;
-            [myDevice unlockForConfiguration];
-        }
-    }
+
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:myDevice error:&error];
     if (!input){
         NSLog(@"Device input wrong!!");
@@ -61,10 +48,27 @@ CMMotionManager *motionManager;
     }else {
         NSLog(@"add device wrong!!!");
     }
+    if ([myDevice isFocusModeSupported:AVCaptureFocusModeLocked]) {
+        NSError *error = nil;
+        if ([myDevice lockForConfiguration:&error]) {
+            myDevice.focusMode = AVCaptureFocusModeLocked;
+            [myDevice setFocusModeLockedWithLensPosition:0.8 completionHandler:nil];
+            [myDevice unlockForConfiguration];
+        }
+    }
+    if ([myDevice isExposureModeSupported:AVCaptureExposureModeLocked]) {
+        NSError *error = nil;
+        if ([myDevice lockForConfiguration:&error]) {
+            myDevice.exposureMode = AVCaptureExposureModeCustom;
+            //std::cout<<myDevice.activeFormat.maxISO<<std::endl;;
+            [myDevice setExposureModeCustomWithDuration:CMTimeMakeWithSeconds( 1/33.0, 1000*1000*1000 ) ISO:100 completionHandler:nil];
+            [myDevice unlockForConfiguration];
+        }
+    }
     video_output = [[AVCaptureVideoDataOutput alloc] init];
     NSDictionary *newSettings = @{ (NSString *)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA) };
     video_output.videoSettings = newSettings;
-    video_output.minFrameDuration = CMTimeMake(1, 20);
+    video_output.minFrameDuration = CMTimeMake(1, 10);
     [video_output setAlwaysDiscardsLateVideoFrames:YES];
     if ([session canAddOutput:video_output]) {
         [session addOutput:video_output];
@@ -83,33 +87,53 @@ CMMotionManager *motionManager;
     previewLayer.orientation = AVCaptureVideoOrientationLandscapeRight;
     [previewLayer setPosition:CGPointMake(CGRectGetMidX(layerRect),CGRectGetMidY(layerRect))];
     [[imgView layer] addSublayer:previewLayer];
-    //[session startRunning];
+    [session startRunning];
 }
     
 - (void)captureOutput:(AVCaptureOutput *)captureOutput
 didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
        fromConnection:(AVCaptureConnection *)connection {
     //NSLog(@"img: %f", timestamp.value/(double)timestamp.timescale);
-    if(false){
-    //if(need_record==true){
-        sensor_msgs::Image img_ros_img;
+    //if(false){
+    if(need_record==true){
+        
         CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
         //NSLog(@"%f", timestamp.value/(double)timestamp.timescale);
         UIImage *image = [self imageFromSampleBuffer:sampleBuffer];
         cv::Mat img_cv = [mm_Try cvMatFromUIImage:image];
+        float time_in_sec = timestamp.value/(double)timestamp.timescale;
+        
+        sensor_msgs::CompressedImage img_msg;
         cv::Mat img_gray;
+        //cv::cvtColor(img_cv, img_gray, CV_BGRA2GRAY);
+//        std::vector<unsigned char> binaryBuffer_;
+//        cv::imencode(".jpg", img_cv, binaryBuffer_);
+//        img_msg.data=binaryBuffer_;
+//        img_msg.header.seq=img_count;
+//        img_msg.header.stamp.sec=floor(time_in_sec);
+//        img_msg.header.stamp.nsec=time_in_sec-floor(time_in_sec);
+//        img_msg.format="jpeg";
+//        img_pub.publish(img_msg);
+//        static double lasttime=-1;
+//        if(lasttime<0){
+//            lasttime=time_in_sec;
+//        }else{
+//            std::cout<<time_in_sec - lasttime<<std::endl;
+//            lasttime=time_in_sec;
+//        }
+        
+        sensor_msgs::Image img_ros_img;
         cv::cvtColor(img_cv, img_gray, CV_BGRA2GRAY);
-        img_ros_img.height=img_gray.cols;
-        img_ros_img.width=img_gray.rows;
-        img_ros_img.encoding=sensor_msgs::image_encodings::TYPE_8UC1;
+        img_ros_img.height=img_gray.rows;
+        img_ros_img.width=img_gray.cols;
+        img_ros_img.encoding=sensor_msgs::image_encodings::MONO8;
         img_ros_img.is_bigendian=false;
         img_ros_img.step=1*img_ros_img.width;
-        img_ros_img.data.assign(img_cv.data, img_cv.data+img_ros_img.step*img_ros_img.height);
-        float time_in_sec = timestamp.value/(double)timestamp.timescale;
-        img_ros_img.header.frame_id=img_count;
-        img_ros_img.header.stamp.sec=floor(time_in_sec);
-        img_ros_img.header.stamp.nsec=time_in_sec-floor(time_in_sec);
-        imu_pub.publish(img_ros_img);
+        img_ros_img.data.assign(img_gray.data, img_gray.data+img_ros_img.step*img_ros_img.height);
+
+        img_ros_img.header.seq=img_count;
+        img_ros_img.header.stamp= ros::Time(time_in_sec);
+        img_pub.publish(img_ros_img);
         img_count++;
     }
 }
@@ -157,8 +181,14 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     
 - (IBAction)start_record:(id)sender{
     need_record=!need_record;
+    if(need_record){
+        [sender setTitle:@"Stop" forState:UIControlStateNormal];
+    }else{
+        [sender setTitle:@"Start" forState:UIControlStateNormal];
+    }
 }
 - (IBAction)ip_edit_ended:(id)sender{
+    [sender setTitle:@"Connected" forState:UIControlStateNormal];
     [defaults setObject:[ip_text_field.attributedText string] forKey:@"master_uri"];
     [defaults synchronize];
     [self connectToMaster];
@@ -277,8 +307,7 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
             }
             static int imu_data_seq=0;
             msg.header.seq=imu_data_seq;
-            msg.header.stamp.sec=floor(test[3]);
-            msg.header.stamp.nsec=test[3]-floor(test[3]);
+            msg.header.stamp= ros::Time(test[3]);
             msgs.push_back(msg);
             imu_data_seq++;
             //std::cout<<std::setprecision(20)<<msg.linear_acceleration.x<<","<<msg.linear_acceleration.y<<","<<test[3]<<std::endl;
@@ -310,8 +339,8 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
                 msg.angular_velocity.z=gyros[i][2];
                 static int imu_data_seq=0;
                 msg.header.seq=imu_data_seq;
-                msg.header.stamp.sec=floor(gyros[i][3]);
-                msg.header.stamp.nsec=gyros[i][3]-floor(gyros[i][3]);
+                msg.header.stamp= ros::Time(gyros[i][3]);
+                //std::cout<<msg.header.stamp.nsec<<std::endl;
                 //std::cout<<std::setprecision(20)<<msg.linear_acceleration.x<<","<<msg.linear_acceleration.y<<","<<gyros[i][3]<<std::endl;
                 //NSLog(@"ax: %f, ay: %f, az: %f, gx: %f, gy: %f, gz: %f, t: %f", msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z, msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z, gyros[i][3]);
                 imu_pub.publish(msg);
@@ -336,9 +365,57 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
             NSLog(@"test overflow");
         }
     }
-    //
-    
 }
+
+- (void)processIMU_acce{
+    int last_acc_id=-1;
+    int last_gyro_id=-1;
+    int a_size=acces.size();
+    int g_size=gyros.size();
+    for(int i=0;i<a_size;i++){
+        for(int j=0;j<g_size-1;j++){
+            if(acces[i][3]>acces[j][3] && acces[i][3]<=acces[j+1][3]){
+                sensor_msgs::Imu msg;
+                double x,y,z;
+                interDouble(gyros[j][0], gyros[j+1][0], gyros[j][3], gyros[j+1][3], x, acces[i][3]);
+                interDouble(gyros[j][1], gyros[j+1][1], gyros[j][3], gyros[j+1][3], y, acces[i][3]);
+                interDouble(gyros[j][2], gyros[j+1][2], gyros[j][3], gyros[j+1][3], z, acces[i][3]);
+                msg.angular_velocity.x=x;
+                msg.angular_velocity.y=y;
+                msg.angular_velocity.z=z;
+                msg.linear_acceleration.x=acces[i][0];
+                msg.linear_acceleration.y=acces[i][1];
+                msg.linear_acceleration.z=acces[i][2];
+                static int imu_data_seq=0;
+                msg.header.seq=imu_data_seq;
+                msg.header.stamp= ros::Time(acces[i][3]);
+                //std::cout<<msg.header.stamp.nsec<<std::endl;
+                //std::cout<<std::setprecision(20)<<msg.linear_acceleration.x<<","<<msg.linear_acceleration.y<<","<<gyros[i][3]<<std::endl;
+                //NSLog(@"ax: %f, ay: %f, az: %f, gx: %f, gy: %f, gz: %f, t: %f", msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z, msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z, gyros[i][3]);
+                imu_pub.publish(msg);
+                imu_data_seq++;
+                last_gyro_id=j;
+                last_acc_id=i;
+                break;
+            }
+        }
+    }
+    if(last_gyro_id>0){
+        if(last_gyro_id-1<gyros.size()){
+            gyros.erase(gyros.begin(), gyros.begin()+last_gyro_id);
+        }else{
+            NSLog(@"test overflow");
+        }
+    }
+    if(last_acc_id>=0){
+        if(last_acc_id<acces.size()){
+            acces.erase(acces.begin(), acces.begin()+last_acc_id+1);
+        }else{
+            NSLog(@"test overflow");
+        }
+    }
+}
+
 
 - (void)processIMU{
     int index_first;
@@ -438,10 +515,11 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
          ^(CMAccelerometerData *data, NSError *error){
              if(need_record==true){
                  std::vector<double> imu;
+                 //std::cout<<std::setprecision(20)<<data.acceleration.x<<","<<data.acceleration.y<<","<<data.acceleration.z<<std::endl;
                  imu.resize(5);
-                 imu[0]=data.acceleration.x;
-                 imu[1]=data.acceleration.y;
-                 imu[2]=data.acceleration.z;
+                 imu[0]=-data.acceleration.x*9.8;
+                 imu[1]=-data.acceleration.y*9.8;
+                 imu[2]=-data.acceleration.z*9.8;
                  imu[3]=data.timestamp;
                  imu[4]=0;
                  //std::cout<<"acce"<<" : "<<data.timestamp<<std::endl;
@@ -465,7 +543,7 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
                  imu[2]=data.rotationRate.z;
                  imu[3]=data.timestamp;
                  imu[4]=0;
-                 //std::cout<<"gyros"<<" : "<<data.timestamp<<std::endl;
+                 //std::cout<<std::setprecision(20)<<"gyros"<<" : "<<data.timestamp<<std::endl;
                  gyros.push_back(imu);
                  [self processIMU_gyro];
              }
@@ -485,7 +563,7 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
     struct ifaddrs *interfaces = NULL;
     struct ifaddrs *temp_addr = NULL;
     NSString *wifiAddress = nil;
-    NSString *cellAddress = nil;
+    NSString *usbAddress = nil;
     
     // retrieve the current interfaces - returns 0 on success
     if(!getifaddrs(&interfaces)) {
@@ -497,14 +575,16 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
                 NSString *name = [NSString stringWithUTF8String:temp_addr->ifa_name];
                 NSString *addr = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)]; // pdp_ip0
                 NSLog(@"NAME: \"%@\" addr: %@", name, addr); // see for yourself
-                
+
+                if([name isEqualToString:@"bridge100"]) {
+                    if(![addr isEqualToString:@"0.0.0.0"]){
+                        usbAddress = addr;
+                    }
+                }
                 if([name isEqualToString:@"en0"]) {
-                    // Interface is the wifi connection on the iPhone
-                    wifiAddress = addr;
-                } else
-                if([name isEqualToString:@"pdp_ip0"]) {
-                    // Interface is the cell connection on the iPhone
-                    //cellAddress = addr;
+                    if(![addr isEqualToString:@"0.0.0.0"]){
+                        wifiAddress = addr;
+                    }
                 }
             }
             temp_addr = temp_addr->ifa_next;
@@ -512,7 +592,12 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
         // Free memory
         freeifaddrs(interfaces);
     }
-    NSString *addr = wifiAddress ? wifiAddress : cellAddress;
+    NSString *addr=nil;
+    if(usbAddress){
+        addr=usbAddress;
+    }else{
+        addr=wifiAddress;
+    }
     return addr ? addr : @"0.0.0.0";
 }
     
