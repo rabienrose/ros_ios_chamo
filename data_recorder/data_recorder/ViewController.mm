@@ -16,6 +16,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/opencv.hpp>
 #include <iomanip>
+
 @interface ViewController ()
 @end
 
@@ -133,7 +134,14 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
         img_ros_img.header.seq=img_count;
         img_ros_img.header.stamp= ros::Time(time_in_sec);
-        img_pub.publish(img_ros_img);
+        if(is_publishing){
+            img_pub.publish(img_ros_img);
+        }
+        if(is_recording_bag){
+            std::lock_guard<std::mutex> guard(m);
+            bag.write("/cam0", img_ros_img.header.stamp, img_ros_img);
+            //bag_ptr->write("/cam0", img_ros_img.header.stamp, img_ros_img);
+        }
         img_count++;
     }
 }
@@ -187,11 +195,40 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         [sender setTitle:@"Start" forState:UIControlStateNormal];
     }
 }
+
+- (IBAction)record_bag:(id)sender{
+    is_recording_bag=!is_recording_bag;
+    if(is_recording_bag){
+        
+        //bag_ptr->open(full_file_name.c_str(), rosbag::bagmode::Write);
+        [sender setTitle:@"Stop Bag" forState:UIControlStateNormal];
+    }else{
+        bag.close();
+        //bag_ptr->close();
+        NSLog(@"close the bag");
+        [sender setTitle:@"Start Bag" forState:UIControlStateNormal];
+    }
+}
+
+- (IBAction)publish_msg:(id)sender{
+    is_publishing=!is_publishing;
+    if(is_publishing){
+        [sender setTitle:@"Stop Pub" forState:UIControlStateNormal];
+    }else{
+        [sender setTitle:@"Start Pub" forState:UIControlStateNormal];
+    }
+}
+
 - (IBAction)ip_edit_ended:(id)sender{
     [sender setTitle:@"Connected" forState:UIControlStateNormal];
     [defaults setObject:[ip_text_field.attributedText string] forKey:@"master_uri"];
     [defaults synchronize];
-    [self connectToMaster];
+    bool re = [self connectToMaster];
+    if(re){
+        UIView * btn = [self.view viewWithTag:1];
+        btn.userInteractionEnabled=YES;
+        btn.alpha=1.0;
+    }
 }
 
 void interDouble(double v1, double v2, double t1, double t2, double& v3_out, double t3){
@@ -343,7 +380,16 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
                 //std::cout<<msg.header.stamp.nsec<<std::endl;
                 //std::cout<<std::setprecision(20)<<msg.linear_acceleration.x<<","<<msg.linear_acceleration.y<<","<<gyros[i][3]<<std::endl;
                 //NSLog(@"ax: %f, ay: %f, az: %f, gx: %f, gy: %f, gz: %f, t: %f", msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z, msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z, gyros[i][3]);
-                imu_pub.publish(msg);
+                if(is_publishing){
+                    imu_pub.publish(msg);
+                }
+                if (is_recording_bag){
+                    std::cout<<msg.header.stamp<<std::endl;
+                    //bag_ptr->write("imu0", msg.header.stamp, msg);
+                    std::lock_guard<std::mutex> guard(m);
+                    bag.write("imu0", msg.header.stamp, msg);
+                }
+                
                 imu_data_seq++;
                 last_acc_id=j;
                 last_gyro_id=i;
@@ -504,6 +550,24 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
     imu_count=0;
     defaults = [NSUserDefaults standardUserDefaults];
     [ip_text_field setText:[defaults objectForKey:@"master_uri"]];
+    is_recording_bag=false;
+    UIView * btn = [self.view viewWithTag:1];
+    btn.userInteractionEnabled=NO;
+    btn.alpha=0.4;
+    
+    NSArray *dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *full_addr = [[dirPaths objectAtIndex:0] stringByAppendingPathComponent:@"chamo.bag"];
+    
+    char documentsPath[2000], *docsPath;
+    docsPath = (char*)[full_addr cStringUsingEncoding:[NSString defaultCStringEncoding]];
+    std::string full_file_name(docsPath);
+    
+    //NSLog(@"path_gen: %d",strlen(docsPath));
+    //memcpy(documentsPath, docsPath, strlen(docsPath));
+    //bag_ptr= std::make_shared<rosbag::Bag>();
+    std::cout<<full_file_name<<std::endl;
+    bag.open(full_file_name.c_str(), rosbag::bagmode::Write);
+
     motionManager = [[CMMotionManager alloc] init];
     NSOperationQueue *quene =[[NSOperationQueue alloc] init];
     quene.maxConcurrentOperationCount=1;
@@ -627,6 +691,7 @@ int tryInter(std::vector<double> test, std::vector<std::vector<double>>& query, 
             }
             else
             {
+                return false;
                 NSLog(@"fail to connect to the ROS master !");
             }
         }

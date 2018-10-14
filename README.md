@@ -13,3 +13,4 @@
 - For all other advanced msg of ros you want to add, you can generate the msg headers in ubuntu, and copy the .h files to the include folder.
 - There is an example of xcode project (data_recorder) show how to use the ros in APP.
 - This code is not widely tested and are not targeted to robust, you can understand it and modify based on your situation.
+- Use sudo xcode-select -switch /Applications/Xcode.app/ to switch the compiler to xcode

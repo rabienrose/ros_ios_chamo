@@ -7,3 +7,5 @@ cp ./build/roscpp/Release-iphoneos/libroscpp.a lib
 cp ./build/roscpp_serialization/Release-iphoneos/libroscpp_serialization.a lib
 cp ./build/rostime/Release-iphoneos/librostime.a lib
 cp ./build/xmlrpcpp/Release-iphoneos/libxmlrpcpp.a lib
+cp ./build/rosbag_storage/Release-iphoneos/librosbag_storage.a lib
+
