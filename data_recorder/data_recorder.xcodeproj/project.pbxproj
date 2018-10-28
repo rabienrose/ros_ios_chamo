@@ -12,6 +12,7 @@
 		04FE080C2185A9E600D4D642 /* AVCamManualCameraViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04FE080A2185A9E500D4D642 /* AVCamManualCameraViewController.mm */; };
 		04FE080D2185A9E600D4D642 /* AVCamManualPreviewView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04FE080B2185A9E500D4D642 /* AVCamManualPreviewView.mm */; };
 		04FE080F2185BF0600D4D642 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 04FE080E2185BF0600D4D642 /* Default-568h@2x.png */; };
+		04FE08122185D94E00D4D642 /* ViewController+setting.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04FE08112185D94E00D4D642 /* ViewController+setting.mm */; };
 		CE00FB88205D6E7B00682E6F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = CE00FB87205D6E7B00682E6F /* main.m */; };
 		CE00FB8B205D6E7B00682E6F /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = CE00FB8A205D6E7B00682E6F /* AppDelegate.m */; };
 		CE00FB91205D6E7B00682E6F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = CE00FB8F205D6E7B00682E6F /* Main.storyboard */; };
@@ -41,6 +42,8 @@
 		04FE080A2185A9E500D4D642 /* AVCamManualCameraViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AVCamManualCameraViewController.mm; sourceTree = "<group>"; };
 		04FE080B2185A9E500D4D642 /* AVCamManualPreviewView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AVCamManualPreviewView.mm; sourceTree = "<group>"; };
 		04FE080E2185BF0600D4D642 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+		04FE08102185D94E00D4D642 /* ViewController+setting.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ViewController+setting.h"; sourceTree = "<group>"; };
+		04FE08112185D94E00D4D642 /* ViewController+setting.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = "ViewController+setting.mm"; sourceTree = "<group>"; };
 		CE00FB83205D6E7B00682E6F /* data_recorder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = data_recorder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE00FB87205D6E7B00682E6F /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		CE00FB89205D6E7B00682E6F /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -116,6 +119,8 @@
 		CE00FB85205D6E7B00682E6F /* data_recorder */ = {
 			isa = PBXGroup;
 			children = (
+				04FE08102185D94E00D4D642 /* ViewController+setting.h */,
+				04FE08112185D94E00D4D642 /* ViewController+setting.mm */,
 				04FE08082185A9E400D4D642 /* AVCamManualCameraViewController.h */,
 				04FE080A2185A9E500D4D642 /* AVCamManualCameraViewController.mm */,
 				04FE08092185A9E500D4D642 /* AVCamManualPreviewView.h */,
@@ -201,7 +206,7 @@
 					CE00FB82205D6E7B00682E6F = {
 						CreatedOnToolsVersion = 8.2.1;
 						DevelopmentTeam = Q84JA4R9R7;
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -243,6 +248,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				04FE080C2185A9E600D4D642 /* AVCamManualCameraViewController.mm in Sources */,
+				04FE08122185D94E00D4D642 /* ViewController+setting.mm in Sources */,
 				CEDEB6B2205E7FD000782DAC /* try_mm.mm in Sources */,
 				CE00FB8B205D6E7B00682E6F /* AppDelegate.m in Sources */,
 				04FE080D2185A9E600D4D642 /* AVCamManualPreviewView.mm in Sources */,
@@ -364,14 +370,15 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Distribution: zili wang (Q84JA4R9R7)";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Q84JA4R9R7;
 				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../thirdparty\"",
 					"$(PROJECT_DIR)",
 				);
+				GCC_OPTIMIZATION_LEVEL = 0;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../include\"",
 					"\"$(SRCROOT)/../thirdparty/console_bridge/include\"",
@@ -387,7 +394,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "chamo.com.data-recorder";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = chamo_datat_record;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -396,8 +403,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Distribution: zili wang (Q84JA4R9R7)";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Q84JA4R9R7;
 				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -419,7 +426,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "chamo.com.data-recorder";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = chamo_datat_record;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
