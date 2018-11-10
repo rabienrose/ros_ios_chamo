@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04072FE62196A7440000C235 /* ViewController+sensor.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04072FE52196A7430000C235 /* ViewController+sensor.mm */; };
 		04C9A1F42171AE0100DD0D7A /* librosbag_storage.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 04C9A1F32171AE0000DD0D7A /* librosbag_storage.a */; };
 		04EF45EB21672F2F004D35FB /* opencv2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04EF45EA21672F2E004D35FB /* opencv2.framework */; };
 		04FE080C2185A9E600D4D642 /* AVCamManualCameraViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04FE080A2185A9E500D4D642 /* AVCamManualCameraViewController.mm */; };
@@ -35,6 +36,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		04072FE42196A7430000C235 /* ViewController+sensor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ViewController+sensor.h"; sourceTree = "<group>"; };
+		04072FE52196A7430000C235 /* ViewController+sensor.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = "ViewController+sensor.mm"; sourceTree = "<group>"; };
 		04C9A1F32171AE0000DD0D7A /* librosbag_storage.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = librosbag_storage.a; path = ../lib/librosbag_storage.a; sourceTree = "<group>"; };
 		04EF45EA21672F2E004D35FB /* opencv2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = opencv2.framework; sourceTree = "<group>"; };
 		04FE08082185A9E400D4D642 /* AVCamManualCameraViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AVCamManualCameraViewController.h; sourceTree = "<group>"; };
@@ -119,6 +122,8 @@
 		CE00FB85205D6E7B00682E6F /* data_recorder */ = {
 			isa = PBXGroup;
 			children = (
+				04072FE42196A7430000C235 /* ViewController+sensor.h */,
+				04072FE52196A7430000C235 /* ViewController+sensor.mm */,
 				04FE08102185D94E00D4D642 /* ViewController+setting.h */,
 				04FE08112185D94E00D4D642 /* ViewController+setting.mm */,
 				04FE08082185A9E400D4D642 /* AVCamManualCameraViewController.h */,
@@ -247,6 +252,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				04072FE62196A7440000C235 /* ViewController+sensor.mm in Sources */,
 				04FE080C2185A9E600D4D642 /* AVCamManualCameraViewController.mm in Sources */,
 				04FE08122185D94E00D4D642 /* ViewController+setting.mm in Sources */,
 				CEDEB6B2205E7FD000782DAC /* try_mm.mm in Sources */,
