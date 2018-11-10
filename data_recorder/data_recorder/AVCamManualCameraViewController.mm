@@ -13,13 +13,9 @@
 static void * SessionRunningContext = &SessionRunningContext;
 static void * FocusModeContext = &FocusModeContext;
 static void * ExposureModeContext = &ExposureModeContext;
-static void * WhiteBalanceModeContext = &WhiteBalanceModeContext;
 static void * LensPositionContext = &LensPositionContext;
 static void * ExposureDurationContext = &ExposureDurationContext;
 static void * ISOContext = &ISOContext;
-static void * ExposureTargetBiasContext = &ExposureTargetBiasContext;
-static void * ExposureTargetOffsetContext = &ExposureTargetOffsetContext;
-static void * DeviceWhiteBalanceGainsContext = &DeviceWhiteBalanceGainsContext;
 
 typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 	AVCamManualSetupResultSuccess,
@@ -27,20 +23,15 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 	AVCamManualSetupResultSessionConfigurationFailed
 };
 
-typedef NS_ENUM( NSInteger, AVCamManualCaptureMode ) {
-	AVCamManualCaptureModePhoto = 0,
-	AVCamManualCaptureModeMovie = 1
-};
-
 @interface AVCamManualCameraViewController ()
 
+
+@property (strong, nonatomic) IBOutlet UIView *settingPanel;
+@property (weak, nonatomic) IBOutlet UISegmentedControl *settingGroupControl;
 @property (nonatomic, weak) IBOutlet AVCamManualPreviewView *previewView;
 @property (nonatomic, weak) IBOutlet UIButton *recordButton;
 @property (nonatomic, weak) IBOutlet UIButton *cameraButton;
 @property (nonatomic, weak) IBOutlet UIButton *pubButton;
-@property (nonatomic, weak) IBOutlet UIButton *HUDButton;
-
-@property (nonatomic, weak) IBOutlet UIView *manualHUD;
 
 @property (nonatomic) NSArray *focusModes;
 @property (nonatomic, weak) IBOutlet UIView *manualHUDFocusView;
@@ -58,25 +49,9 @@ typedef NS_ENUM( NSInteger, AVCamManualCaptureMode ) {
 @property (nonatomic, weak) IBOutlet UISlider *ISOSlider;
 @property (nonatomic, weak) IBOutlet UILabel *ISONameLabel;
 @property (nonatomic, weak) IBOutlet UILabel *ISOValueLabel;
-@property (nonatomic, weak) IBOutlet UISlider *exposureTargetBiasSlider;
-@property (nonatomic, weak) IBOutlet UILabel *exposureTargetBiasNameLabel;
-@property (nonatomic, weak) IBOutlet UILabel *exposureTargetBiasValueLabel;
-@property (nonatomic, weak) IBOutlet UISlider *exposureTargetOffsetSlider;
-@property (nonatomic, weak) IBOutlet UILabel *exposureTargetOffsetNameLabel;
-@property (nonatomic, weak) IBOutlet UILabel *exposureTargetOffsetValueLabel;
 
-@property (nonatomic) NSArray *whiteBalanceModes;
-@property (nonatomic, weak) IBOutlet UIView *manualHUDWhiteBalanceView;
-@property (nonatomic, weak) IBOutlet UISegmentedControl *whiteBalanceModeControl;
-@property (nonatomic, weak) IBOutlet UISlider *temperatureSlider;
-@property (nonatomic, weak) IBOutlet UILabel *temperatureNameLabel;
-@property (nonatomic, weak) IBOutlet UILabel *temperatureValueLabel;
-@property (nonatomic, weak) IBOutlet UISlider *tintSlider;
-@property (nonatomic, weak) IBOutlet UILabel *tintNameLabel;
-@property (nonatomic, weak) IBOutlet UILabel *tintValueLabel;
+@property (weak, nonatomic) IBOutlet UIView *topicView;
 
-@property (nonatomic, weak) IBOutlet UIView *manualHUDOtherView;
-@property (nonatomic, weak) IBOutlet UISegmentedControl *lensStabilizationControl;
 
 @property (nonatomic, weak) IBOutlet UIView *manualHUDIPView;
 
@@ -91,7 +66,7 @@ typedef NS_ENUM( NSInteger, AVCamManualCaptureMode ) {
 @property (nonatomic) AVCamManualSetupResult setupResult;
 
 @end
-
+NSUserDefaults *defaults;
 CMMotionManager *motionManager;
 
 @implementation AVCamManualCameraViewController
@@ -171,14 +146,10 @@ void interDouble(double v1, double v2, double t1, double t2, double& v3_out, dou
 	self.cameraButton.enabled = YES;
 	self.recordButton.enabled = YES;
 	self.pubButton.enabled = NO;
-	self.HUDButton.enabled = YES;
-	
-	self.manualHUD.hidden = YES;
 	self.manualHUDIPView.hidden = YES;
 	self.manualHUDFocusView.hidden = YES;
 	self.manualHUDExposureView.hidden = YES;
-	self.manualHUDWhiteBalanceView.hidden = YES;
-	self.manualHUDOtherView.hidden = YES;
+    self.settingPanel.hidden=YES;
 	
 	// Create the AVCaptureSession
 	self.session = [[AVCaptureSession alloc] init];
@@ -230,7 +201,7 @@ void interDouble(double v1, double v2, double t1, double t2, double& v3_out, dou
     
     motionManager = [[CMMotionManager alloc] init];
     if (motionManager.accelerometerAvailable){
-        motionManager.accelerometerUpdateInterval =0.1;
+        motionManager.accelerometerUpdateInterval =0.01;
         [motionManager
          startAccelerometerUpdatesToQueue:quene
          withHandler:
@@ -249,7 +220,7 @@ void interDouble(double v1, double v2, double t1, double t2, double& v3_out, dou
          }];
     }
     if (motionManager.gyroAvailable){
-        motionManager.gyroUpdateInterval =0.1;
+        motionManager.gyroUpdateInterval =0.01;
         [motionManager
          startGyroUpdatesToQueue:quene
          withHandler:
@@ -279,7 +250,6 @@ void interDouble(double v1, double v2, double t1, double t2, double& v3_out, dou
 		{
 			case AVCamManualSetupResultSuccess:
 			{
-				// Only setup observers and start the session running if setup succeeded
 				[self addObservers];
 				[self.session startRunning];
 				break;
@@ -398,93 +368,40 @@ void interDouble(double v1, double v2, double t1, double t2, double& v3_out, dou
     self.ISOSlider.value = self.videoDevice.ISO;
     self.ISOSlider.enabled = ( self.videoDevice.exposureMode == AVCaptureExposureModeCustom );
     
-    self.exposureTargetBiasSlider.minimumValue = self.videoDevice.minExposureTargetBias;
-    self.exposureTargetBiasSlider.maximumValue = self.videoDevice.maxExposureTargetBias;
-    self.exposureTargetBiasSlider.value = self.videoDevice.exposureTargetBias;
-    self.exposureTargetBiasSlider.enabled = ( self.videoDevice != nil );
-    
-    self.exposureTargetOffsetSlider.minimumValue = self.videoDevice.minExposureTargetBias;
-    self.exposureTargetOffsetSlider.maximumValue = self.videoDevice.maxExposureTargetBias;
-    self.exposureTargetOffsetSlider.value = self.videoDevice.exposureTargetOffset;
-    self.exposureTargetOffsetSlider.enabled = NO;
-    
-    // Manual white balance controls
-    self.whiteBalanceModes = @[@(AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance), @(AVCaptureWhiteBalanceModeLocked)];
-    
-    self.whiteBalanceModeControl.enabled = (self.videoDevice != nil);
-    self.whiteBalanceModeControl.selectedSegmentIndex = [self.whiteBalanceModes indexOfObject:@(self.videoDevice.whiteBalanceMode)];
-    for ( NSNumber *mode in self.whiteBalanceModes ) {
-        [self.whiteBalanceModeControl setEnabled:[self.videoDevice isWhiteBalanceModeSupported:(AVCaptureWhiteBalanceMode)mode.intValue] forSegmentAtIndex:[self.whiteBalanceModes indexOfObject:mode]];
-    }
-    
-    AVCaptureWhiteBalanceGains whiteBalanceGains = self.videoDevice.deviceWhiteBalanceGains;
-    AVCaptureWhiteBalanceTemperatureAndTintValues whiteBalanceTemperatureAndTint = [self.videoDevice temperatureAndTintValuesForDeviceWhiteBalanceGains:whiteBalanceGains];
-    
-    self.temperatureSlider.minimumValue = 3000;
-    self.temperatureSlider.maximumValue = 8000;
-    self.temperatureSlider.value = whiteBalanceTemperatureAndTint.temperature;
-    self.temperatureSlider.enabled = ( self.videoDevice && self.videoDevice.whiteBalanceMode == AVCaptureWhiteBalanceModeLocked );
-    
-    self.tintSlider.minimumValue = -150;
-    self.tintSlider.maximumValue = 150;
-    self.tintSlider.value = whiteBalanceTemperatureAndTint.tint;
-    self.tintSlider.enabled = ( self.videoDevice && self.videoDevice.whiteBalanceMode == AVCaptureWhiteBalanceModeLocked );
-    
-    self.lensStabilizationControl.enabled = ( self.videoDevice != nil );
-    self.lensStabilizationControl.selectedSegmentIndex = 0;
-    
-}
-
-- (IBAction)toggleHUD:(id)sender
-{
-    self.manualHUD.hidden = ! self.manualHUD.hidden;
 }
 
 - (IBAction)changeManualHUD:(id)sender
 {
+    self.manualHUDFocusView.hidden = YES;
+    self.manualHUDExposureView.hidden = YES;
+    self.manualHUDIPView.hidden = YES;
+    self.topicView.hidden= YES;
     UISegmentedControl *control = sender;
-    
-    self.manualHUDIPView.hidden = ( control.selectedSegmentIndex == 0 ) ? NO : YES;
-    self.manualHUDFocusView.hidden = ( control.selectedSegmentIndex == 1 ) ? NO : YES;
-    self.manualHUDExposureView.hidden = ( control.selectedSegmentIndex == 2 ) ? NO : YES;
-    self.manualHUDWhiteBalanceView.hidden = ( control.selectedSegmentIndex == 3 ) ? NO : YES;
-    self.manualHUDOtherView.hidden = ( control.selectedSegmentIndex == 4 ) ? NO : YES;
-}
-
-- (void)setSlider:(UISlider *)slider highlightColor:(UIColor *)color
-{
-    slider.tintColor = color;
-    
-    if ( slider == self.lensPositionSlider ) {
-        self.lensPositionNameLabel.textColor = self.lensPositionValueLabel.textColor = slider.tintColor;
-    }
-    else if ( slider == self.exposureDurationSlider ) {
-        self.exposureDurationNameLabel.textColor = self.exposureDurationValueLabel.textColor = slider.tintColor;
-    }
-    else if ( slider == self.ISOSlider ) {
-        self.ISONameLabel.textColor = self.ISOValueLabel.textColor = slider.tintColor;
-    }
-    else if ( slider == self.exposureTargetBiasSlider ) {
-        self.exposureTargetBiasNameLabel.textColor = self.exposureTargetBiasValueLabel.textColor = slider.tintColor;
-    }
-    else if ( slider == self.temperatureSlider ) {
-        self.temperatureNameLabel.textColor = self.temperatureValueLabel.textColor = slider.tintColor;
-    }
-    else if ( slider == self.tintSlider ) {
-        self.tintNameLabel.textColor = self.tintValueLabel.textColor = slider.tintColor;
+    if(control.selectedSegmentIndex == 0){
+        self.manualHUDIPView.hidden = NO;
+        self.topicView.hidden= NO;
+    }else if(control.selectedSegmentIndex == 1){
+        self.manualHUDFocusView.hidden = NO;
+        self.manualHUDExposureView.hidden = NO;
     }
 }
 
 - (IBAction)sliderTouchBegan:(id)sender
 {
-    UISlider *slider = (UISlider *)sender;
-    [self setSlider:slider highlightColor:[UIColor colorWithRed:0.0 green:122.0/255.0 blue:1.0 alpha:1.0]];
 }
 
 - (IBAction)sliderTouchEnded:(id)sender
 {
     UISlider *slider = (UISlider *)sender;
-    [self setSlider:slider highlightColor:[UIColor yellowColor]];
+    if ( slider == self.lensPositionSlider ) {
+        
+    }
+    else if ( slider == self.exposureDurationSlider ) {
+        
+    }
+    else if ( slider == self.ISOSlider ) {
+        
+    }
 }
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput
@@ -510,32 +427,13 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         img_ros_img.header.seq=img_count;
         img_ros_img.header.stamp= ros::Time(time_in_sec);
         img_ros_img.format="jpeg";
-        //        static double lasttime=-1;
-        //        if(lasttime<0){
-        //            lasttime=time_in_sec;
-        //        }else{
-        //            std::cout<<time_in_sec - lasttime<<std::endl;
-        //            lasttime=time_in_sec;
-        //        }
-        
-        //        sensor_msgs::Image img_ros_img;
-        //        cv::cvtColor(img_cv, img_gray, CV_BGRA2GRAY);
-        //        img_ros_img.height=img_gray.rows;
-        //        img_ros_img.width=img_gray.cols;
-        //        img_ros_img.encoding=sensor_msgs::image_encodings::MONO8;
-        //        img_ros_img.is_bigendian=false;
-        //        img_ros_img.step=1*img_ros_img.width;
-        //        img_ros_img.data.assign(img_gray.data, img_gray.data+img_ros_img.step*img_ros_img.height);
-        //
-        //        img_ros_img.header.seq=img_count;
-        //        img_ros_img.header.stamp= ros::Time(time_in_sec);
         if(is_publishing){
             img_pub.publish(img_ros_img);
         }
         dispatch_async( self.sessionQueue, ^{
             if(is_recording_bag){
                 if(bag_ptr->isOpen()){
-                    bag_ptr->write("/cam0", img_ros_img.header.stamp, img_ros_img);
+                    bag_ptr->write("cam0", img_ros_img.header.stamp, img_ros_img);
                 }
             }
         });
@@ -547,41 +445,21 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 // Create a UIImage from sample buffer data
 - (UIImage *) imageFromSampleBuffer:(CMSampleBufferRef) sampleBuffer
 {
-    // Get a CMSampleBuffer's Core Video image buffer for the media data
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    // Lock the base address of the pixel buffer
     CVPixelBufferLockBaseAddress(imageBuffer, 0);
-    
-    // Get the number of bytes per row for the pixel buffer
     void *baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
-    
-    // Get the number of bytes per row for the pixel buffer
     size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
-    // Get the pixel buffer width and height
     size_t width = CVPixelBufferGetWidth(imageBuffer);
     size_t height = CVPixelBufferGetHeight(imageBuffer);
-    
-    // Create a device-dependent RGB color space
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-    
-    // Create a bitmap graphics context with the sample buffer data
     CGContextRef context = CGBitmapContextCreate(baseAddress, width, height, 8,
                                                  bytesPerRow, colorSpace, kCGBitmapByteOrder32Little | kCGImageAlphaPremultipliedFirst);
-    // Create a Quartz image from the pixel data in the bitmap graphics context
     CGImageRef quartzImage = CGBitmapContextCreateImage(context);
-    // Unlock the pixel buffer
     CVPixelBufferUnlockBaseAddress(imageBuffer,0);
-    
-    // Free up the context and color space
     CGContextRelease(context);
     CGColorSpaceRelease(colorSpace);
-    
-    // Create an image object from the Quartz image
     UIImage *image = [UIImage imageWithCGImage:quartzImage];
-    //UIImage *image = [UIImage imageWithCGImage:quartzImage scale:1.0f orientation:UIImageOrientationRight];
-    // Release the Quartz image
     CGImageRelease(quartzImage);
-    
     return image;
 }
 
@@ -593,6 +471,11 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if ( self.setupResult != AVCamManualSetupResultSuccess ) {
         return;
     }
+//    defaults = [NSUserDefaults standardUserDefaults];
+//    NSString* focus_mode = [defaults objectForKey:@"focus_mode"];
+//    std::string focus_mode_std = std::string([focus_mode UTF8String]);
+//    NSString* exposure_mode = [defaults objectForKey:@"exposure_mode"];
+//    std::string exposure_mode_std = std::string([exposure_mode UTF8String]);
     
     NSError *error = nil;
     
@@ -643,6 +526,12 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     }
     
     [video_output setSampleBufferDelegate:self queue:self.sessionQueue];
+//    if (focus_mode_std=="custom"){
+//        NSString* focus_position = [defaults objectForKey:@"focus_position"];
+//        std::string focus_position_std = std::string([focus_position UTF8String]);
+//        float focus_position_f=atof(focus_position_std.c_str());
+//        [self.videoDevice setFocusModeLockedWithLensPosition:focus_position_f completionHandler:nil];
+//    }
     [self.videoDevice setActiveVideoMinFrameDuration:CMTimeMake(1, 10)];
 
     [self.session commitConfiguration];
@@ -654,6 +543,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 #pragma mark Device Configuration
 
+- (IBAction)toggleSetting:(id)sender {
+    self.settingPanel.hidden = !self.settingPanel.hidden;
+}
 - (IBAction)chooseNewCamera:(id)sender
 {
     // Present all available cameras
@@ -677,11 +569,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         return;
     }
     
-    self.manualHUD.userInteractionEnabled = NO;
     self.cameraButton.enabled = NO;
     self.recordButton.enabled = NO;
     self.pubButton.enabled = NO;
-    self.HUDButton.enabled = NO;
     
     dispatch_async( self.sessionQueue, ^{
         AVCaptureDeviceInput *newVideoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:newVideoDevice error:nil];
@@ -711,8 +601,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             self.cameraButton.enabled = YES;
             self.recordButton.enabled = YES;
             self.pubButton.enabled = YES;
-            self.HUDButton.enabled = YES;
-            self.manualHUD.userInteractionEnabled = YES;
         } );
     } );
 }
@@ -737,6 +625,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     else {
         NSLog( @"Could not lock device for configuration: %@", error );
     }
+    
+    [defaults setObject:@"custom" forKey:@"focus_mode"];
+    [defaults synchronize];
 }
 
 - (IBAction)changeLensPosition:(id)sender
@@ -841,95 +732,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     }
 }
 
-- (IBAction)changeExposureTargetBias:(id)sender
-{
-    UISlider *control = sender;
-    NSError *error = nil;
-    
-    if ( [self.videoDevice lockForConfiguration:&error] ) {
-        [self.videoDevice setExposureTargetBias:control.value completionHandler:nil];
-        [self.videoDevice unlockForConfiguration];
-    }
-    else {
-        NSLog( @"Could not lock device for configuration: %@", error );
-    }
-}
-
-- (IBAction)changeWhiteBalanceMode:(id)sender
-{
-    UISegmentedControl *control = sender;
-    AVCaptureWhiteBalanceMode mode = (AVCaptureWhiteBalanceMode)[self.whiteBalanceModes[control.selectedSegmentIndex] intValue];
-    NSError *error = nil;
-    
-    if ( [self.videoDevice lockForConfiguration:&error] ) {
-        if ( [self.videoDevice isWhiteBalanceModeSupported:mode] ) {
-            self.videoDevice.whiteBalanceMode = mode;
-        }
-        else {
-            NSLog( @"White balance mode %@ is not supported. White balance mode is %@.", [self stringFromWhiteBalanceMode:mode], [self stringFromWhiteBalanceMode:self.videoDevice.whiteBalanceMode] );
-            self.whiteBalanceModeControl.selectedSegmentIndex = [self.whiteBalanceModes indexOfObject:@(self.videoDevice.whiteBalanceMode)];
-        }
-        [self.videoDevice unlockForConfiguration];
-    }
-    else {
-        NSLog( @"Could not lock device for configuration: %@", error );
-    }
-}
-
-- (void)setWhiteBalanceGains:(AVCaptureWhiteBalanceGains)gains
-{
-    NSError *error = nil;
-    
-    if ( [self.videoDevice lockForConfiguration:&error] ) {
-        AVCaptureWhiteBalanceGains normalizedGains = [self normalizedGains:gains]; // Conversion can yield out-of-bound values, cap to limits
-        [self.videoDevice setWhiteBalanceModeLockedWithDeviceWhiteBalanceGains:normalizedGains completionHandler:nil];
-        [self.videoDevice unlockForConfiguration];
-    }
-    else {
-        NSLog( @"Could not lock device for configuration: %@", error );
-    }
-}
-
-- (IBAction)changeTemperature:(id)sender
-{
-    AVCaptureWhiteBalanceTemperatureAndTintValues temperatureAndTint = {
-        .temperature = self.temperatureSlider.value,
-        .tint = self.tintSlider.value,
-    };
-    
-    [self setWhiteBalanceGains:[self.videoDevice deviceWhiteBalanceGainsForTemperatureAndTintValues:temperatureAndTint]];
-}
-
-- (IBAction)changeTint:(id)sender
-{
-    AVCaptureWhiteBalanceTemperatureAndTintValues temperatureAndTint = {
-        .temperature = self.temperatureSlider.value,
-        .tint = self.tintSlider.value,
-    };
-    
-    [self setWhiteBalanceGains:[self.videoDevice deviceWhiteBalanceGainsForTemperatureAndTintValues:temperatureAndTint]];
-}
-
-- (IBAction)lockWithGrayWorld:(id)sender
-{
-    [self setWhiteBalanceGains:self.videoDevice.grayWorldDeviceWhiteBalanceGains];
-}
-
-- (AVCaptureWhiteBalanceGains)normalizedGains:(AVCaptureWhiteBalanceGains)gains
-{
-    AVCaptureWhiteBalanceGains g = gains;
-    
-    g.redGain = MAX( 1.0, g.redGain );
-    g.greenGain = MAX( 1.0, g.greenGain );
-    g.blueGain = MAX( 1.0, g.blueGain );
-    
-    g.redGain = MIN( self.videoDevice.maxWhiteBalanceGain, g.redGain );
-    g.greenGain = MIN( self.videoDevice.maxWhiteBalanceGain, g.greenGain );
-    g.blueGain = MIN( self.videoDevice.maxWhiteBalanceGain, g.blueGain );
-    
-    return g;
-}
-
 - (IBAction)toggleBagRecording:(id)sender
 {
     if(!is_recording_bag){
@@ -971,10 +773,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self addObserver:self forKeyPath:@"videoDevice.exposureMode" options:(NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew) context:ExposureModeContext];
     [self addObserver:self forKeyPath:@"videoDevice.exposureDuration" options:NSKeyValueObservingOptionNew context:ExposureDurationContext];
     [self addObserver:self forKeyPath:@"videoDevice.ISO" options:NSKeyValueObservingOptionNew context:ISOContext];
-    [self addObserver:self forKeyPath:@"videoDevice.exposureTargetBias" options:NSKeyValueObservingOptionNew context:ExposureTargetBiasContext];
-    [self addObserver:self forKeyPath:@"videoDevice.exposureTargetOffset" options:NSKeyValueObservingOptionNew context:ExposureTargetOffsetContext];
-    [self addObserver:self forKeyPath:@"videoDevice.whiteBalanceMode" options:(NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew) context:WhiteBalanceModeContext];
-    [self addObserver:self forKeyPath:@"videoDevice.deviceWhiteBalanceGains" options:NSKeyValueObservingOptionNew context:DeviceWhiteBalanceGainsContext];
 }
 
 - (void)removeObservers
@@ -985,10 +783,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self removeObserver:self forKeyPath:@"videoDevice.exposureMode" context:ExposureModeContext];
     [self removeObserver:self forKeyPath:@"videoDevice.exposureDuration" context:ExposureDurationContext];
     [self removeObserver:self forKeyPath:@"videoDevice.ISO" context:ISOContext];
-    [self removeObserver:self forKeyPath:@"videoDevice.exposureTargetBias" context:ExposureTargetBiasContext];
-    [self removeObserver:self forKeyPath:@"videoDevice.exposureTargetOffset" context:ExposureTargetOffsetContext];
-    [self removeObserver:self forKeyPath:@"videoDevice.whiteBalanceMode" context:WhiteBalanceModeContext];
-    [self removeObserver:self forKeyPath:@"videoDevice.deviceWhiteBalanceGains" context:DeviceWhiteBalanceGainsContext];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
@@ -1021,7 +815,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                 if ( focusMode != AVCaptureFocusModeLocked ) {
                     self.lensPositionSlider.value = newLensPosition;
                 }
-                
                 self.lensPositionValueLabel.text = [NSString stringWithFormat:@"%.1f", newLensPosition];
             } );
         }
@@ -1102,55 +895,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             } );
         }
     }
-    else if ( context == ExposureTargetBiasContext ) {
-        if ( newValue && newValue != [NSNull null] ) {
-            float newExposureTargetBias = [newValue floatValue];
-            dispatch_async( dispatch_get_main_queue(), ^{
-                self.exposureTargetBiasValueLabel.text = [NSString stringWithFormat:@"%.1f", newExposureTargetBias];
-            } );
-        }
-    }
-    else if ( context == ExposureTargetOffsetContext ) {
-        if ( newValue && newValue != [NSNull null] ) {
-            float newExposureTargetOffset = [newValue floatValue];
-            dispatch_async( dispatch_get_main_queue(), ^{
-                self.exposureTargetOffsetSlider.value = newExposureTargetOffset;
-                self.exposureTargetOffsetValueLabel.text = [NSString stringWithFormat:@"%.1f", newExposureTargetOffset];
-            } );
-        }
-    }
-    else if ( context == WhiteBalanceModeContext ) {
-        if ( newValue && newValue != [NSNull null] ) {
-            AVCaptureWhiteBalanceMode newMode = (AVCaptureWhiteBalanceMode)[newValue intValue];
-            dispatch_async( dispatch_get_main_queue(), ^{
-                self.whiteBalanceModeControl.selectedSegmentIndex = [self.whiteBalanceModes indexOfObject:@(newMode)];
-                self.temperatureSlider.enabled = ( newMode == AVCaptureWhiteBalanceModeLocked );
-                self.tintSlider.enabled = ( newMode == AVCaptureWhiteBalanceModeLocked );
-                
-                if ( oldValue && oldValue != [NSNull null] ) {
-                    AVCaptureWhiteBalanceMode oldMode = (AVCaptureWhiteBalanceMode)[oldValue intValue];
-                    NSLog( @"white balance mode: %@ -> %@", [self stringFromWhiteBalanceMode:oldMode], [self stringFromWhiteBalanceMode:newMode] );
-                }
-            } );
-        }
-    }
-    else if ( context == DeviceWhiteBalanceGainsContext ) {
-        if ( newValue && newValue != [NSNull null] ) {
-            AVCaptureWhiteBalanceGains newGains;
-            [newValue getValue:&newGains];
-            AVCaptureWhiteBalanceTemperatureAndTintValues newTemperatureAndTint = [self.videoDevice temperatureAndTintValuesForDeviceWhiteBalanceGains:newGains];
-            AVCaptureWhiteBalanceMode whiteBalanceMode = self.videoDevice.whiteBalanceMode;
-            dispatch_async( dispatch_get_main_queue(), ^{
-                if ( whiteBalanceMode != AVCaptureExposureModeLocked ) {
-                    self.temperatureSlider.value = newTemperatureAndTint.temperature;
-                    self.tintSlider.value = newTemperatureAndTint.tint;
-                }
-                
-                self.temperatureValueLabel.text = [NSString stringWithFormat:@"%i", (int)newTemperatureAndTint.temperature];
-                self.tintValueLabel.text = [NSString stringWithFormat:@"%i", (int)newTemperatureAndTint.tint];
-            } );
-        }
-    }
+
     else {
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
@@ -1200,22 +945,4 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     
     return string;
 }
-
-- (NSString *)stringFromWhiteBalanceMode:(AVCaptureWhiteBalanceMode)whiteBalanceMode
-{
-    NSString *string = @"INVALID WHITE BALANCE MODE";
-    
-    if ( whiteBalanceMode == AVCaptureWhiteBalanceModeLocked ) {
-        string = @"Locked";
-    }
-    else if ( whiteBalanceMode == AVCaptureWhiteBalanceModeAutoWhiteBalance ) {
-        string = @"Auto";
-    }
-    else if ( whiteBalanceMode == AVCaptureWhiteBalanceModeContinuousAutoWhiteBalance ) {
-        string = @"ContinuousAuto";
-    }
-    
-    return string;
-}
-
 @end
