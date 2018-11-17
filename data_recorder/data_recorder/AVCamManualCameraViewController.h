@@ -17,9 +17,9 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
     AVCamManualSetupResultSessionConfigurationFailed
 };
 
-@interface AVCamManualCameraViewController : UIViewController<AVCaptureVideoDataOutputSampleBufferDelegate>{
-    AVCaptureVideoDataOutput *video_output;
-    AVCaptureDevice *videoDevice;
+@interface AVCamManualCameraViewController : UIViewController<AVCaptureVideoDataOutputSampleBufferDelegate, UIPickerViewDataSource, UIPickerViewDelegate, UITextFieldDelegate>{
+    NSArray *file_list;
+    NSString *sel_filename;
     bool need_record;
     int img_count;
     int imu_count;
@@ -31,11 +31,11 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
     std::string focus_mode_std;
     std::string exposure_mode_std;
     float cache_focus_posi;
+    float cache_exposure_t;
+    float cache_iso;
     ros::Publisher img_pub;
     ros::Publisher imu_pub;
     std::shared_ptr<rosbag::Bag> bag_ptr;
-    
-    
 }
 @property (strong, nonatomic) IBOutlet UIView *settingPanel;
 @property (weak, nonatomic) IBOutlet UISegmentedControl *settingGroupControl;
@@ -62,6 +62,12 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 @property (nonatomic, weak) IBOutlet UILabel *ISOValueLabel;
 @property (weak, nonatomic) IBOutlet UIView *topicView;
 @property (nonatomic, weak) IBOutlet UIView *manualHUDIPView;
+@property (weak, nonatomic) IBOutlet UILabel *recording_sign;
+@property (weak, nonatomic) IBOutlet UIPickerView *bag_list_ui;
+@property (weak, nonatomic) IBOutlet UIView *file_view;
+@property (weak, nonatomic) IBOutlet UITextField *imu_topic_edit;
+@property (weak, nonatomic) IBOutlet UITextField *img_topic_edit;
+@property (weak, nonatomic) IBOutlet UITextField *gps_topic_edit;
 
 // Session management
 @property (nonatomic) dispatch_queue_t sessionQueue;
@@ -69,6 +75,9 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 @property (nonatomic) AVCaptureDeviceInput *videoDeviceInput;
 @property (nonatomic) AVCaptureDeviceDiscoverySession *videoDeviceDiscoverySession;
 @property (nonatomic) AVCaptureDevice *videoDevice;
+@property (nonatomic) AVCaptureVideoDataOutput *video_output;
+
+
 
 // Utilities
 @property (nonatomic) AVCamManualSetupResult setupResult;

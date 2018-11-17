@@ -7,30 +7,58 @@ static void * ExposureDurationContext = &ExposureDurationContext;
 static void * ISOContext = &ISOContext;
 
 @implementation AVCamManualCameraViewController (Setting)
+
 - (void) loadConfig{
     defaults = [NSUserDefaults standardUserDefaults];
+    NSString* imu_topic_ns = [defaults objectForKey:@"imu_topic"];
+    NSString* img_topic_ns = [defaults objectForKey:@"img_topic"];
+    NSString* gps_topic_ns = [defaults objectForKey:@"gps_topic"];
+    if (imu_topic_ns==nil){
+        imu_topic_ns=@"imu";
+    }
+    if (img_topic_ns==nil){
+        img_topic_ns=@"img";
+    }
+    if (gps_topic_ns==nil){
+        gps_topic_ns=@"gps";
+    }
+    [self.imu_topic_edit setText:imu_topic_ns];
+    [self.img_topic_edit setText:img_topic_ns];
+    [self.gps_topic_edit setText:gps_topic_ns];
+    
     NSString* focus_mode = [defaults objectForKey:@"focus_mode"];
     if (focus_mode==nil){
-        [defaults setObject:@"custom" forKey:@"focus_mode"];
-        [defaults synchronize];
+        focus_mode_std="auto";
     }else{
         focus_mode_std = std::string([focus_mode UTF8String]);
     }
     
     NSString* exposure_mode = [defaults objectForKey:@"exposure_mode"];
     if (exposure_mode==nil){
-        [defaults setObject:@"custom" forKey:@"exposure_mode"];
-        [defaults synchronize];
+        exposure_mode_std="auto";
     }else{
         exposure_mode_std = std::string([exposure_mode UTF8String]);
     }
     
     NSString* focus_posi_ns = [defaults objectForKey:@"focus_posi"];
     if (focus_posi_ns==nil){
-        [defaults setObject:@"0.5" forKey:@"exposure_mode"];
-        [defaults synchronize];
+        cache_focus_posi=-1;
     }else{
-        cache_focus_posi = atof(std::string([exposure_mode UTF8String]).c_str());
+        cache_focus_posi = atof(std::string([focus_posi_ns UTF8String]).c_str());
+    }
+    
+    NSString* exposure_ns = [defaults objectForKey:@"exposure_t"];
+    if (exposure_ns==nil){
+        cache_exposure_t=-1;
+    }else{
+        cache_exposure_t = atof(std::string([exposure_ns UTF8String]).c_str());
+    }
+    
+    NSString* iso_ns = [defaults objectForKey:@"iso"];
+    if (iso_ns==nil){
+        cache_iso=-1;
+    }else{
+        cache_iso = atof(std::string([iso_ns UTF8String]).c_str());
     }
 }
 
@@ -47,7 +75,12 @@ static void * ISOContext = &ISOContext;
     
     self.lensPositionSlider.minimumValue = 0.0;
     self.lensPositionSlider.maximumValue = 1.0;
-    self.lensPositionSlider.value = self.videoDevice.lensPosition;
+    if (cache_focus_posi<0){
+        self.lensPositionSlider.value = self.videoDevice.lensPosition;
+    }else{
+        self.lensPositionSlider.value=cache_focus_posi;
+    }
+    std::cout<<"lensPosition: "<<self.lensPositionSlider.value<<std::endl;
     self.lensPositionSlider.enabled = ( self.videoDevice && self.videoDevice.focusMode == AVCaptureFocusModeLocked && [self.videoDevice isFocusModeSupported:AVCaptureFocusModeLocked] );
     
     // Manual exposure controls
@@ -63,17 +96,29 @@ static void * ISOContext = &ISOContext;
     // Use 0-1 as the slider range and do a non-linear mapping from the slider value to the actual device exposure duration
     self.exposureDurationSlider.minimumValue = 0;
     self.exposureDurationSlider.maximumValue = 1;
-    double exposureDurationSeconds = CMTimeGetSeconds( self.videoDevice.exposureDuration );
+    double exposureDurationSeconds;
+    if(cache_exposure_t<0){
+        exposureDurationSeconds = CMTimeGetSeconds( self.videoDevice.exposureDuration );
+    }else{
+        exposureDurationSeconds = cache_exposure_t;
+    }
+    
     double minExposureDurationSeconds = MAX( CMTimeGetSeconds( self.videoDevice.activeFormat.minExposureDuration ), kExposureMinimumDuration );
     double maxExposureDurationSeconds = CMTimeGetSeconds( self.videoDevice.activeFormat.maxExposureDuration );
     // Map from duration to non-linear UI range 0-1
     double p = ( exposureDurationSeconds - minExposureDurationSeconds ) / ( maxExposureDurationSeconds - minExposureDurationSeconds ); // Scale to 0-1
     self.exposureDurationSlider.value = pow( p, 1 / kExposureDurationPower ); // Apply inverse power
     self.exposureDurationSlider.enabled = ( self.videoDevice && self.videoDevice.exposureMode == AVCaptureExposureModeCustom );
-    
+    std::cout<<"exposure time: "<<exposureDurationSeconds<<std::endl;
     self.ISOSlider.minimumValue = self.videoDevice.activeFormat.minISO;
     self.ISOSlider.maximumValue = self.videoDevice.activeFormat.maxISO;
-    self.ISOSlider.value = self.videoDevice.ISO;
+    if(cache_iso<0){
+        self.ISOSlider.value = self.videoDevice.ISO;
+    }else{
+        self.ISOSlider.value=cache_iso;
+    }
+    
+    std::cout<<"iso: "<<self.ISOSlider.value<<std::endl;
     self.ISOSlider.enabled = ( self.videoDevice.exposureMode == AVCaptureExposureModeCustom );
     
 }
@@ -84,16 +129,11 @@ static void * ISOContext = &ISOContext;
     if ( self.setupResult != AVCamManualSetupResultSuccess ) {
         return;
     }
-    
     NSError *error = nil;
-    
     [self.session beginConfiguration];
-    
     self.session.sessionPreset = AVCaptureSessionPreset640x480;
-    
-    // Add video input
-    videoDevice = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
-    AVCaptureDeviceInput *videoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:videoDevice error:&error];
+    self.videoDevice = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
+    AVCaptureDeviceInput *videoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:self.videoDevice error:&error];
     if ( ! videoDeviceInput ) {
         NSLog( @"Could not create video device input: %@", error );
         self.setupResult = AVCamManualSetupResultSessionConfigurationFailed;
@@ -103,7 +143,7 @@ static void * ISOContext = &ISOContext;
     if ( [self.session canAddInput:videoDeviceInput] ) {
         [self.session addInput:videoDeviceInput];
         self.videoDeviceInput = videoDeviceInput;
-        self.videoDevice = videoDevice;
+        self.videoDevice = self.videoDevice;
         
         dispatch_async( dispatch_get_main_queue(), ^{
             UIInterfaceOrientation statusBarOrientation = [UIApplication sharedApplication].statusBarOrientation;
@@ -122,24 +162,71 @@ static void * ISOContext = &ISOContext;
         [self.session commitConfiguration];
         return;
     }
-    
-    video_output = [[AVCaptureVideoDataOutput alloc] init];
+
+    if ( [self.videoDevice lockForConfiguration:&error] ) {
+        AVCaptureFocusMode mode_focus;
+        if (focus_mode_std=="custom"){
+            mode_focus=AVCaptureFocusModeLocked;
+        }else if(focus_mode_std=="auto"){
+            mode_focus=AVCaptureFocusModeContinuousAutoFocus;
+        }else{
+            NSLog( @"load focus mode failed!");
+            self.setupResult = AVCamManualSetupResultSessionConfigurationFailed;
+            [self.session commitConfiguration];
+            return;
+        }
+        if ( [self.videoDevice isFocusModeSupported:mode_focus] ) {
+            self.videoDevice.focusMode = mode_focus;
+        }
+        
+        AVCaptureExposureMode mode_exposure;
+        if (exposure_mode_std=="custom"){
+            mode_exposure=AVCaptureExposureModeCustom;
+        }else if(exposure_mode_std=="auto"){
+            mode_exposure=AVCaptureExposureModeContinuousAutoExposure;
+        }else if(exposure_mode_std=="lock"){
+            mode_exposure=AVCaptureExposureModeLocked;
+        }else{
+            NSLog( @"load exposure mode failed!");
+            self.setupResult = AVCamManualSetupResultSessionConfigurationFailed;
+            [self.session commitConfiguration];
+            return;
+        }
+        if([self.videoDevice isExposureModeSupported:mode_exposure]){
+            self.videoDevice.exposureMode=mode_exposure;
+        }
+        if(focus_mode_std=="custom"){
+            if(cache_focus_posi>0){
+                [self.videoDevice setFocusModeLockedWithLensPosition:cache_focus_posi completionHandler:nil];
+            }
+        }
+        if(exposure_mode_std=="custom"){
+            if(cache_exposure_t>0){
+                [self.videoDevice setExposureModeCustomWithDuration:CMTimeMakeWithSeconds( cache_exposure_t, 1000*1000*1000 ) ISO:AVCaptureISOCurrent completionHandler:nil];
+            }
+            if(cache_iso>0){
+                [self.videoDevice setExposureModeCustomWithDuration:AVCaptureExposureDurationCurrent ISO:cache_iso completionHandler:nil];
+            }
+            
+        }
+        
+        
+        [self.videoDevice unlockForConfiguration];
+    }else {
+        NSLog( @"Could not lock device for configuration: %@", error );
+    }
+
+    self.video_output = [[AVCaptureVideoDataOutput alloc] init];
     NSDictionary *newSettings = @{ (NSString *)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_32BGRA) };
-    video_output.videoSettings = newSettings;
-    [video_output setAlwaysDiscardsLateVideoFrames:YES];
-    if ([self.session canAddOutput:video_output]) {
-        [self.session addOutput:video_output];
+    self.video_output.videoSettings = newSettings;
+    [self.video_output setAlwaysDiscardsLateVideoFrames:YES];
+    if ([self.session canAddOutput:self.video_output]) {
+        [self.session addOutput:self.video_output];
     }else {
         NSLog(@"add output wrong!!!");
     }
     
-    [video_output setSampleBufferDelegate:self queue:self.sessionQueue];
-    if (focus_mode_std=="custom"){
-        NSString* focus_position = [defaults objectForKey:@"focus_position"];
-        std::string focus_position_std = std::string([focus_position UTF8String]);
-        float focus_position_f=atof(focus_position_std.c_str());
-        [self.videoDevice setFocusModeLockedWithLensPosition:focus_position_f completionHandler:nil];
-    }
+    [self.video_output setSampleBufferDelegate:self queue:self.sessionQueue];
     [self.videoDevice setActiveVideoMinFrameDuration:CMTimeMake(1, 10)];
     
     [self.session commitConfiguration];
@@ -232,9 +319,7 @@ static void * ISOContext = &ISOContext;
             AVCaptureFocusMode focusMode = self.videoDevice.focusMode;
             float newLensPosition = [newValue floatValue];
             dispatch_async( dispatch_get_main_queue(), ^{
-                if ( focusMode != AVCaptureFocusModeLocked ) {
-                    self.lensPositionSlider.value = newLensPosition;
-                }
+                self.lensPositionSlider.value = newLensPosition;
                 self.lensPositionValueLabel.text = [NSString stringWithFormat:@"%.1f", newLensPosition];
             } );
         }
@@ -289,12 +374,11 @@ static void * ISOContext = &ISOContext;
             // Map from duration to non-linear UI range 0-1
             double p = ( newDurationSeconds - minDurationSeconds ) / ( maxDurationSeconds - minDurationSeconds ); // Scale to 0-1
             dispatch_async( dispatch_get_main_queue(), ^{
-                if ( exposureMode != AVCaptureExposureModeCustom ) {
-                    self.exposureDurationSlider.value = pow( p, 1 / kExposureDurationPower ); // Apply inverse power
-                }
+                self.exposureDurationSlider.value = pow( p, 1 / kExposureDurationPower ); // Apply inverse power
                 if ( newDurationSeconds < 1 ) {
                     int digits = MAX( 0, 2 + floor( log10( newDurationSeconds ) ) );
                     self.exposureDurationValueLabel.text = [NSString stringWithFormat:@"1/%.*f", digits, 1/newDurationSeconds];
+                    //std::cout<<"new expo time: "<<newDurationSeconds<<std::endl;
                 }
                 else {
                     self.exposureDurationValueLabel.text = [NSString stringWithFormat:@"%.2f", newDurationSeconds];
@@ -308,9 +392,7 @@ static void * ISOContext = &ISOContext;
             AVCaptureExposureMode exposureMode = self.videoDevice.exposureMode;
             
             dispatch_async( dispatch_get_main_queue(), ^{
-                if ( exposureMode != AVCaptureExposureModeCustom ) {
-                    self.ISOSlider.value = newISO;
-                }
+                self.ISOSlider.value = newISO;
                 self.ISOValueLabel.text = [NSString stringWithFormat:@"%i", (int)newISO];
             } );
         }
@@ -335,8 +417,6 @@ static void * ISOContext = &ISOContext;
         
         NSError *error = nil;
         if ( [device lockForConfiguration:&error] ) {
-            // Setting (focus/exposure)PointOfInterest alone does not initiate a (focus/exposure) operation
-            // Call -set(Focus/Exposure)Mode: to apply the new point of interest
             if ( focusMode != AVCaptureFocusModeLocked && device.isFocusPointOfInterestSupported && [device isFocusModeSupported:focusMode] ) {
                 device.focusPointOfInterest = point;
                 device.focusMode = focusMode;
@@ -355,6 +435,50 @@ static void * ISOContext = &ISOContext;
         }
     } );
 }
+
+- (void)changeCameraWithDevice:(AVCaptureDevice *)newVideoDevice
+{
+    // Check if device changed
+    if ( newVideoDevice == self.videoDevice ) {
+        return;
+    }
+    
+    self.cameraButton.enabled = NO;
+    self.recordButton.enabled = NO;
+    self.pubButton.enabled = NO;
+    
+    dispatch_async( self.sessionQueue, ^{
+        AVCaptureDeviceInput *newVideoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:newVideoDevice error:nil];
+        
+        [self.session beginConfiguration];
+        
+        // Remove the existing device input first, since using the front and back camera simultaneously is not supported
+        [self.session removeInput:self.videoDeviceInput];
+        if ( [self.session canAddInput:newVideoDeviceInput] ) {
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:AVCaptureDeviceSubjectAreaDidChangeNotification object:self.videoDevice];
+            
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(subjectAreaDidChange:) name:AVCaptureDeviceSubjectAreaDidChangeNotification object:newVideoDevice];
+            
+            [self.session addInput:newVideoDeviceInput];
+            self.videoDeviceInput = newVideoDeviceInput;
+            self.videoDevice = newVideoDevice;
+        }
+        else {
+            [self.session addInput:self.videoDeviceInput];
+        }
+        
+        [self.session commitConfiguration];
+        
+        dispatch_async( dispatch_get_main_queue(), ^{
+            [self configureManualHUD];
+            
+            self.cameraButton.enabled = YES;
+            self.recordButton.enabled = YES;
+            self.pubButton.enabled = YES;
+        } );
+    } );
+}
+
 
 
 @end

@@ -21,40 +21,29 @@ CMMotionManager *motionManager;
     is_recording_bag=false;
     is_publishing=false;
     [self loadConfig];
-    
-	// Disable UI until the session starts running
-	self.cameraButton.enabled = YES;
+	self.cameraButton.enabled = NO;
 	self.recordButton.enabled = YES;
 	self.pubButton.enabled = NO;
 	self.manualHUDIPView.hidden = YES;
 	self.manualHUDFocusView.hidden = YES;
 	self.manualHUDExposureView.hidden = YES;
+    self.topicView.hidden = YES;
+    self.file_view.hidden = YES;
     self.settingPanel.hidden=YES;
-	
-	// Create the AVCaptureSession
 	self.session = [[AVCaptureSession alloc] init];
-
-	// Create a device discovery session
 	NSArray<NSString *> *deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera, AVCaptureDeviceTypeBuiltInDuoCamera, AVCaptureDeviceTypeBuiltInTelephotoCamera];
 	self.videoDeviceDiscoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
-
-	// Set up the preview view
 	self.previewView.session = self.session;
-	
-	// Communicate with the session and other session objects on this queue
-    NSOperationQueue *quene =[[NSOperationQueue alloc] init];
-    quene.maxConcurrentOperationCount=1;
 	self.sessionQueue = dispatch_queue_create( "session queue", DISPATCH_QUEUE_SERIAL );
-    //self.sessionQueue = quene.underlyingQueue;
-
 	self.setupResult = AVCamManualSetupResultSuccess;
-	// Check video authorization status. Video access is required and audio access is optional.
-	// If audio access is denied, audio is not recorded during movie recording.
+    self.bag_list_ui.delegate = self;
+    self.bag_list_ui.dataSource = self;
+    [self update_baglist];
+    [self.view endEditing:YES];
 	switch ( [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo] )
 	{
 		case AVAuthorizationStatusAuthorized:
 		{
-			// The user has previously granted access to the camera
 			break;
 		}
 		case AVAuthorizationStatusNotDetermined:
@@ -74,11 +63,11 @@ CMMotionManager *motionManager;
 			break;
 		}
 	}
-
     dispatch_async( self.sessionQueue, ^{
         [self configureSession];
     } );
-    
+    NSOperationQueue *quene =[[NSOperationQueue alloc] init];
+    quene.maxConcurrentOperationCount=1;
     motionManager = [[CMMotionManager alloc] init];
     if (motionManager.accelerometerAvailable){
         motionManager.accelerometerUpdateInterval =0.01;
@@ -121,10 +110,16 @@ CMMotionManager *motionManager;
     }
 }
 
+-(BOOL) textFieldShouldReturn:(UITextField *)textField{
+    [self.imu_topic_edit resignFirstResponder];
+    [self.img_topic_edit resignFirstResponder];
+    [self.gps_topic_edit resignFirstResponder];
+    return true;
+}
+
 - (void)viewWillAppear:(BOOL)animated
 {
 	[super viewWillAppear:animated];
-
 	dispatch_async( self.sessionQueue, ^{
 		switch ( self.setupResult )
 		{
@@ -209,6 +204,7 @@ CMMotionManager *motionManager;
     self.manualHUDFocusView.hidden = YES;
     self.manualHUDExposureView.hidden = YES;
     self.manualHUDIPView.hidden = YES;
+    self.file_view.hidden = YES;
     self.topicView.hidden= YES;
     UISegmentedControl *control = sender;
     if(control.selectedSegmentIndex == 0){
@@ -217,6 +213,8 @@ CMMotionManager *motionManager;
     }else if(control.selectedSegmentIndex == 1){
         self.manualHUDFocusView.hidden = NO;
         self.manualHUDExposureView.hidden = NO;
+    }else if(control.selectedSegmentIndex == 2){
+        self.file_view.hidden = NO;
     }
 }
 
@@ -228,13 +226,25 @@ CMMotionManager *motionManager;
 {
     UISlider *slider = (UISlider *)sender;
     if ( slider == self.lensPositionSlider ) {
-        
+        std::stringstream ss;
+        ss<<cache_focus_posi;
+        NSString *temp_ss = [NSString stringWithCString:ss.str().c_str() encoding:[NSString defaultCStringEncoding]];
+        [defaults setObject:temp_ss forKey:@"focus_posi"];
+        [defaults synchronize];
     }
     else if ( slider == self.exposureDurationSlider ) {
-        
+        std::stringstream ss;
+        ss<<cache_exposure_t;
+        NSString *temp_ss = [NSString stringWithCString:ss.str().c_str() encoding:[NSString defaultCStringEncoding]];
+        [defaults setObject:temp_ss forKey:@"exposure_t"];
+        [defaults synchronize];
     }
     else if ( slider == self.ISOSlider ) {
-        
+        std::stringstream ss;
+        ss<<cache_iso;
+        NSString *temp_ss = [NSString stringWithCString:ss.str().c_str() encoding:[NSString defaultCStringEncoding]];
+        [defaults setObject:temp_ss forKey:@"iso"];
+        [defaults synchronize];
     }
 }
 
@@ -267,11 +277,11 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         dispatch_async( self.sessionQueue, ^{
             if(is_recording_bag){
                 if(bag_ptr->isOpen()){
-                    bag_ptr->write("cam0", img_ros_img.header.stamp, img_ros_img);
+                    NSString *temp_string =  [self.img_topic_edit.attributedText string];
+                    bag_ptr->write((char *)[temp_string UTF8String], img_ros_img.header.stamp, img_ros_img);
                 }
             }
         });
-        
         img_count++;
     }
 }
@@ -295,48 +305,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self presentViewController:cameraOptionsController animated:YES completion:nil];
 }
 
-- (void)changeCameraWithDevice:(AVCaptureDevice *)newVideoDevice
-{
-    // Check if device changed
-    if ( newVideoDevice == self.videoDevice ) {
-        return;
-    }
-    
-    self.cameraButton.enabled = NO;
-    self.recordButton.enabled = NO;
-    self.pubButton.enabled = NO;
-    
-    dispatch_async( self.sessionQueue, ^{
-        AVCaptureDeviceInput *newVideoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:newVideoDevice error:nil];
-        
-        [self.session beginConfiguration];
-        
-        // Remove the existing device input first, since using the front and back camera simultaneously is not supported
-        [self.session removeInput:self.videoDeviceInput];
-        if ( [self.session canAddInput:newVideoDeviceInput] ) {
-            [[NSNotificationCenter defaultCenter] removeObserver:self name:AVCaptureDeviceSubjectAreaDidChangeNotification object:self.videoDevice];
-            
-            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(subjectAreaDidChange:) name:AVCaptureDeviceSubjectAreaDidChangeNotification object:newVideoDevice];
-            
-            [self.session addInput:newVideoDeviceInput];
-            self.videoDeviceInput = newVideoDeviceInput;
-            self.videoDevice = newVideoDevice;
-        }
-        else {
-            [self.session addInput:self.videoDeviceInput];
-        }
-        
-        [self.session commitConfiguration];
-        
-        dispatch_async( dispatch_get_main_queue(), ^{
-            [self configureManualHUD];
-            
-            self.cameraButton.enabled = YES;
-            self.recordButton.enabled = YES;
-            self.pubButton.enabled = YES;
-        } );
-    } );
-}
 
 - (IBAction)changeFocusMode:(id)sender
 {
@@ -348,6 +316,18 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if ( [self.videoDevice lockForConfiguration:&error] ) {
         if ( [self.videoDevice isFocusModeSupported:mode] ) {
             self.videoDevice.focusMode = mode;
+            if (mode==AVCaptureFocusModeLocked){
+                if(cache_focus_posi>0){
+                    [self.videoDevice setFocusModeLockedWithLensPosition:cache_focus_posi completionHandler:nil];
+                }
+                focus_mode_std="custom";
+            }else if(mode==AVCaptureFocusModeContinuousAutoFocus){
+                focus_mode_std="auto";
+            }else{
+            }
+            NSString *temp_ss = [NSString stringWithCString:focus_mode_std.c_str() encoding:[NSString defaultCStringEncoding]];
+            [defaults setObject:temp_ss forKey:@"focus_mode"];
+            [defaults synchronize];
         }
         else {
             NSLog( @"Focus mode %@ is not supported. Focus mode is %@.", [self stringFromFocusMode:mode], [self stringFromFocusMode:self.videoDevice.focusMode] );
@@ -358,9 +338,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     else {
         NSLog( @"Could not lock device for configuration: %@", error );
     }
-    
-    [defaults setObject:@"custom" forKey:@"focus_mode"];
-    [defaults synchronize];
 }
 
 - (IBAction)changeLensPosition:(id)sender
@@ -371,6 +348,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if ( [self.videoDevice lockForConfiguration:&error] ) {
         [self.videoDevice setFocusModeLockedWithLensPosition:control.value completionHandler:nil];
         [self.videoDevice unlockForConfiguration];
+        cache_focus_posi=control.value;
     }
     else {
         NSLog( @"Could not lock device for configuration: %@", error );
@@ -393,6 +371,27 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if ( [self.videoDevice lockForConfiguration:&error] ) {
         if ( [self.videoDevice isExposureModeSupported:mode] ) {
             self.videoDevice.exposureMode = mode;
+            if (mode==AVCaptureExposureModeCustom){
+                if(cache_exposure_t>0 && cache_iso>0){
+                    [self.videoDevice setExposureModeCustomWithDuration:CMTimeMakeWithSeconds( cache_exposure_t, 1000*1000*1000 ) ISO:cache_iso completionHandler:nil];
+                }else{
+                    if(cache_iso>0){
+                        [self.videoDevice setExposureModeCustomWithDuration:AVCaptureExposureDurationCurrent ISO:cache_iso completionHandler:nil];
+                    }
+                    if(cache_exposure_t>0){
+                        [self.videoDevice setExposureModeCustomWithDuration:CMTimeMakeWithSeconds( cache_exposure_t, 1000*1000*1000 ) ISO:AVCaptureISOCurrent completionHandler:nil];
+                    }
+                }
+                exposure_mode_std="custom";
+            }else if(mode==AVCaptureExposureModeContinuousAutoExposure){
+                exposure_mode_std="auto";
+            }else if(mode==AVCaptureExposureModeLocked){
+                exposure_mode_std="lock";
+            }else{
+            }
+            NSString *temp_ss = [NSString stringWithCString:exposure_mode_std.c_str() encoding:[NSString defaultCStringEncoding]];
+            [defaults setObject:temp_ss forKey:@"exposure_mode"];
+            [defaults synchronize];
         }
         else {
             NSLog( @"Exposure mode %@ is not supported. Exposure mode is %@.", [self stringFromExposureMode:mode], [self stringFromExposureMode:self.videoDevice.exposureMode] );
@@ -403,6 +402,30 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     else {
         NSLog( @"Could not lock device for configuration: %@", error );
     }
+}
+- (IBAction)up_one_btn:(id)sender {
+    [self upload_baglist:false filename:sel_filename];
+}
+
+- (IBAction)del_all_btn:(id)sender {
+    [self del_baglist:true filename:@""];
+    [self update_baglist];
+}
+- (IBAction)del_one_btn:(id)sender {
+    [self del_baglist:false filename:sel_filename];
+    [self update_baglist];
+}
+- (IBAction)imu_topic_end:(id)sender {
+    [defaults setObject:[self.imu_topic_edit.attributedText string] forKey:@"imu_topic"];
+    [defaults synchronize];
+}
+- (IBAction)img_topic_end:(id)sender {
+    [defaults setObject:[self.img_topic_edit.attributedText string] forKey:@"img_topic"];
+    [defaults synchronize];
+}
+- (IBAction)gps_topic_end:(id)sender {
+    [defaults setObject:[self.gps_topic_edit.attributedText string] forKey:@"gps_topic"];
+    [defaults synchronize];
 }
 
 - (IBAction)changeExposureDuration:(id)sender
@@ -418,6 +441,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if ( [self.videoDevice lockForConfiguration:&error] ) {
         [self.videoDevice setExposureModeCustomWithDuration:CMTimeMakeWithSeconds( newDurationSeconds, 1000*1000*1000 )  ISO:AVCaptureISOCurrent completionHandler:nil];
         [self.videoDevice unlockForConfiguration];
+        cache_exposure_t=newDurationSeconds;
     }
     else {
         NSLog( @"Could not lock device for configuration: %@", error );
@@ -432,6 +456,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if ( [self.videoDevice lockForConfiguration:&error] ) {
         [self.videoDevice setExposureModeCustomWithDuration:AVCaptureExposureDurationCurrent ISO:control.value completionHandler:nil];
         [self.videoDevice unlockForConfiguration];
+        cache_iso=control.value;
     }
     else {
         NSLog( @"Could not lock device for configuration: %@", error );
@@ -443,7 +468,12 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if(!is_recording_bag){
         dispatch_async( self.sessionQueue, ^{
             NSArray *dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-            NSString *full_addr = [[dirPaths objectAtIndex:0] stringByAppendingPathComponent:@"chamo.bag"];
+            NSDate *date = [NSDate date];
+            NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+            [formatter setDateFormat:@"MM-dd-HH-mm-ss"];
+            NSString *timeString = [formatter stringFromDate:date];
+            NSString *string1 = [NSString stringWithFormat:@"%@.bag",timeString];
+            NSString *full_addr = [[dirPaths objectAtIndex:0] stringByAppendingPathComponent:string1];
             char *docsPath;
             docsPath = (char*)[full_addr cStringUsingEncoding:[NSString defaultCStringEncoding]];
             std::string full_file_name(docsPath);
@@ -451,8 +481,10 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             bag_ptr.reset(new rosbag::Bag());
             bag_ptr->open(full_file_name.c_str(), rosbag::bagmode::Write);
             is_recording_bag=true;
+            [self update_baglist];
         });
         [sender setTitle:@"Stop" forState:UIControlStateNormal];
+        self.recording_sign.hidden = NO;
         
     }else{
         is_recording_bag=false;
@@ -461,12 +493,27 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             NSLog(@"close the bag");
         });
         [sender setTitle:@"Record" forState:UIControlStateNormal];
+        self.recording_sign.hidden = YES;
+        [self update_baglist];
     }
     
 }
 
 - (IBAction)toggleMsgPublish:(id)sender
 {
+}
+
+- (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView{
+    return 1;
+}
+- (NSInteger)pickerView:(UIPickerView *)pickerView numberOfRowsInComponent:(NSInteger)component{
+    return file_list.count;
+}
+- (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component{
+    return file_list[row];
+}
+- (void)pickerView:(UIPickerView *)pickerView didSelectRow:(NSInteger)row inComponent:(NSInteger)component{
+    sel_filename = file_list[row];
 }
 
 @end
