@@ -9,10 +9,13 @@ static void * ISOContext = &ISOContext;
 @implementation AVCamManualCameraViewController (Setting)
 
 - (void) loadConfig{
+
     defaults = [NSUserDefaults standardUserDefaults];
     NSString* imu_topic_ns = [defaults objectForKey:@"imu_topic"];
     NSString* img_topic_ns = [defaults objectForKey:@"img_topic"];
     NSString* gps_topic_ns = [defaults objectForKey:@"gps_topic"];
+    NSString* img_hz_ns = [defaults objectForKey:@"img_hz"];
+    
     if (imu_topic_ns==nil){
         imu_topic_ns=@"imu";
     }
@@ -22,9 +25,19 @@ static void * ISOContext = &ISOContext;
     if (gps_topic_ns==nil){
         gps_topic_ns=@"gps";
     }
+    if (img_hz_ns==nil){
+        img_hz_ns=@"10";
+    }
     [self.imu_topic_edit setText:imu_topic_ns];
     [self.img_topic_edit setText:img_topic_ns];
     [self.gps_topic_edit setText:gps_topic_ns];
+    [self.img_hz_edit setText:img_hz_ns];
+    
+    NSString* img_size_ns = [defaults objectForKey:@"img_size"];
+    if (img_size_ns==nil){
+        img_size_ns=@"640x480";
+    }
+    [self.cam_size_btn setTitle:img_size_ns forState:UIControlStateNormal];
     
     NSString* focus_mode = [defaults objectForKey:@"focus_mode"];
     if (focus_mode==nil){
@@ -60,6 +73,7 @@ static void * ISOContext = &ISOContext;
     }else{
         cache_iso = atof(std::string([iso_ns UTF8String]).c_str());
     }
+
 }
 
 - (void)configureManualHUD
@@ -72,6 +86,10 @@ static void * ISOContext = &ISOContext;
     for ( NSNumber *mode in self.focusModes ) {
         [self.focusModeControl setEnabled:[self.videoDevice isFocusModeSupported:(AVCaptureFocusMode)mode.intValue] forSegmentAtIndex:[self.focusModes indexOfObject:mode]];
     }
+    [self.img_switch setOn:YES animated:NO];
+    [self.imu_switch setOn:YES animated:NO];
+    [self.gps_switch setOn:YES animated:NO];
+    
     
     self.lensPositionSlider.minimumValue = 0.0;
     self.lensPositionSlider.maximumValue = 1.0;
@@ -131,7 +149,20 @@ static void * ISOContext = &ISOContext;
     }
     NSError *error = nil;
     [self.session beginConfiguration];
-    self.session.sessionPreset = AVCaptureSessionPreset640x480;
+    NSString * btn_string=[self.cam_size_btn titleForState:UIControlStateNormal];
+    bool find_his_size=false;
+    for (int i=0; i<[self.camSizesName count]; i++){
+        if([self.camSizesName[i] isEqualToString:btn_string]){
+            self.session.sessionPreset = self.camSizes[i];
+            find_his_size=true;
+            break;
+        }
+    }
+    if(find_his_size==false){
+        self.session.sessionPreset =AVCaptureSessionPreset640x480;
+        [self.cam_size_btn setTitle:@"640x480" forState:UIControlStateNormal];
+    }
+    
     self.videoDevice = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
     AVCaptureDeviceInput *videoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:self.videoDevice error:&error];
     if ( ! videoDeviceInput ) {
@@ -227,7 +258,13 @@ static void * ISOContext = &ISOContext;
     }
     
     [self.video_output setSampleBufferDelegate:self queue:self.sessionQueue];
-    [self.videoDevice setActiveVideoMinFrameDuration:CMTimeMake(1, 10)];
+    NSString *temp_string =  [self.img_hz_edit.attributedText string];
+    int x = [temp_string intValue];
+    if(x<=30 && x>=1){
+        [self.videoDevice setActiveVideoMinFrameDuration:CMTimeMake(1, x)];
+    }else{
+        [self.videoDevice setActiveVideoMinFrameDuration:CMTimeMake(1, 10)];
+    }
     
     [self.session commitConfiguration];
     

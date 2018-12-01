@@ -27,6 +27,8 @@ CMMotionManager *motionManager;
 	self.manualHUDIPView.hidden = YES;
 	self.manualHUDFocusView.hidden = YES;
 	self.manualHUDExposureView.hidden = YES;
+    self.record_contr_view.hidden = YES;
+    
     self.topicView.hidden = YES;
     self.file_view.hidden = YES;
     self.settingPanel.hidden=YES;
@@ -40,6 +42,10 @@ CMMotionManager *motionManager;
     self.bag_list_ui.dataSource = self;
     [self update_baglist];
     [self.view endEditing:YES];
+    
+    self.camSizes = @[AVCaptureSessionPreset640x480, AVCaptureSessionPreset1280x720, AVCaptureSessionPreset1920x1080];
+    self.camSizesName = @[@"640x480", @"1280x720", @"1920x1080"];
+    
 	switch ( [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo] )
 	{
 		case AVAuthorizationStatusAuthorized:
@@ -77,6 +83,9 @@ CMMotionManager *motionManager;
          ^(CMAccelerometerData *data, NSError *error){
              //NSLog(@"acce: %@", [NSThread currentThread]);
              if(need_record==true){
+                 if(![self.imu_switch isOn]){
+                     return;
+                 }
                  std::vector<double> imu;
                  imu.resize(5);
                  imu[0]=-data.acceleration.x*9.8;
@@ -96,6 +105,9 @@ CMMotionManager *motionManager;
          ^(CMGyroData *data, NSError *error){
              //NSLog(@"gyro: %@", [NSThread currentThread]);
              if(need_record== true){
+                 if(![self.imu_switch isOn]){
+                     return;
+                 }
                  std::vector<double> imu;
                  imu.resize(5);
                  imu[0]=data.rotationRate.x;
@@ -114,6 +126,7 @@ CMMotionManager *motionManager;
     [self.imu_topic_edit resignFirstResponder];
     [self.img_topic_edit resignFirstResponder];
     [self.gps_topic_edit resignFirstResponder];
+    [self.img_hz_edit resignFirstResponder];
     return true;
 }
 
@@ -206,6 +219,7 @@ CMMotionManager *motionManager;
     self.manualHUDIPView.hidden = YES;
     self.file_view.hidden = YES;
     self.topicView.hidden= YES;
+    self.record_contr_view.hidden = YES;
     UISegmentedControl *control = sender;
     if(control.selectedSegmentIndex == 0){
         self.manualHUDIPView.hidden = NO;
@@ -215,6 +229,7 @@ CMMotionManager *motionManager;
         self.manualHUDExposureView.hidden = NO;
     }else if(control.selectedSegmentIndex == 2){
         self.file_view.hidden = NO;
+        self.record_contr_view.hidden = NO;
     }
 }
 
@@ -255,6 +270,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     //NSLog(@"img: %f", timestamp.value/(double)timestamp.timescale);
     //if(false){
     if(need_record==true){
+        if(![self.img_switch isOn]){
+            return;
+        }
         
         CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
         //NSLog(@"%f", timestamp.value/(double)timestamp.timescale);
@@ -302,6 +320,20 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         [cameraOptionsController addAction:newDeviceOption];
     }
     
+    [self presentViewController:cameraOptionsController animated:YES completion:nil];
+}
+
+- (IBAction)chooseCameraSize:(id)sender
+{
+    UIAlertController *cameraOptionsController = [UIAlertController alertControllerWithTitle:@"Choose a size" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
+    [cameraOptionsController addAction:cancelAction];
+    for (int i=0; i<[self.camSizes count]; i++){
+        UIAlertAction *newDeviceOption = [UIAlertAction actionWithTitle:self.camSizesName[i] style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [self changeCamSize:i];
+        }];
+        [cameraOptionsController addAction:newDeviceOption];
+    }
     [self presentViewController:cameraOptionsController animated:YES completion:nil];
 }
 
@@ -404,7 +436,14 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     }
 }
 - (IBAction)up_one_btn:(id)sender {
-    [self upload_baglist:false filename:sel_filename];
+    if (sel_filename!=nil){
+        [self upload_baglist:false filename:sel_filename];
+    }
+}
+
+- (IBAction)up_all_btn:(id)sender {
+
+    [self upload_baglist:true filename:@""];
 }
 
 - (IBAction)del_all_btn:(id)sender {
@@ -412,13 +451,36 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self update_baglist];
 }
 - (IBAction)del_one_btn:(id)sender {
-    [self del_baglist:false filename:sel_filename];
-    [self update_baglist];
+    if (sel_filename!=nil){
+        [self del_baglist:false filename:sel_filename];
+        [self update_baglist];
+    }
 }
 - (IBAction)imu_topic_end:(id)sender {
     [defaults setObject:[self.imu_topic_edit.attributedText string] forKey:@"imu_topic"];
     [defaults synchronize];
 }
+
+- (IBAction)img_hz_end:(id)sender{
+    NSError *error = nil;
+    NSString *temp_string =  [self.img_hz_edit.attributedText string];
+    int x = [temp_string intValue];
+    if(x<=30 && x>=1){
+        if ( [self.videoDevice lockForConfiguration:&error] ) {
+            [self.videoDevice setActiveVideoMinFrameDuration:CMTimeMake(1, x)];
+            [self.videoDevice unlockForConfiguration];
+            [defaults setObject:temp_string forKey:@"img_hz"];
+            [defaults synchronize];
+        }else {
+            NSLog( @"Could not lock device for configuration: %@", error );
+        }
+    }else{
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"hz range" message:@"error!!" preferredStyle:UIAlertControllerStyleAlert];
+        [self presentViewController:alert animated:YES completion:nil];
+        [self performSelector:@selector(dismiss:) withObject:alert afterDelay:2.0];
+    }
+}
+
 - (IBAction)img_topic_end:(id)sender {
     [defaults setObject:[self.img_topic_edit.attributedText string] forKey:@"img_topic"];
     [defaults synchronize];
@@ -481,8 +543,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             bag_ptr.reset(new rosbag::Bag());
             bag_ptr->open(full_file_name.c_str(), rosbag::bagmode::Write);
             is_recording_bag=true;
-            [self update_baglist];
         });
+        //[self update_baglist];
         [sender setTitle:@"Stop" forState:UIControlStateNormal];
         self.recording_sign.hidden = NO;
         
@@ -513,7 +575,12 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     return file_list[row];
 }
 - (void)pickerView:(UIPickerView *)pickerView didSelectRow:(NSInteger)row inComponent:(NSInteger)component{
-    sel_filename = file_list[row];
+    if(row<file_list.count){
+        sel_filename = file_list[row];
+        NSString* re_info = [self get_bag_info:sel_filename];
+        NSLog(re_info);
+        self.info_label.text=re_info;
+    }
 }
 
 @end

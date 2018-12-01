@@ -18,7 +18,7 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 };
 
 @interface AVCamManualCameraViewController : UIViewController<AVCaptureVideoDataOutputSampleBufferDelegate, UIPickerViewDataSource, UIPickerViewDelegate, UITextFieldDelegate>{
-    NSArray *file_list;
+    NSMutableArray *file_list;
     NSString *sel_filename;
     bool need_record;
     int img_count;
@@ -43,6 +43,7 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 @property (nonatomic, weak) IBOutlet UIButton *recordButton;
 @property (nonatomic, weak) IBOutlet UIButton *cameraButton;
 @property (nonatomic, weak) IBOutlet UIButton *pubButton;
+@property (weak, nonatomic) IBOutlet UIView *record_contr_view;
 
 @property (nonatomic) NSArray *focusModes;
 @property (nonatomic, weak) IBOutlet UIView *manualHUDFocusView;
@@ -50,6 +51,8 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 @property (nonatomic, weak) IBOutlet UISlider *lensPositionSlider;
 @property (nonatomic, weak) IBOutlet UILabel *lensPositionNameLabel;
 @property (nonatomic, weak) IBOutlet UILabel *lensPositionValueLabel;
+@property (weak, nonatomic) IBOutlet UIButton *cam_size_btn;
+@property (weak, nonatomic) IBOutlet UILabel *info_label;
 
 @property (nonatomic) NSArray *exposureModes;
 @property (nonatomic, weak) IBOutlet UIView *manualHUDExposureView;
@@ -68,6 +71,13 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 @property (weak, nonatomic) IBOutlet UITextField *imu_topic_edit;
 @property (weak, nonatomic) IBOutlet UITextField *img_topic_edit;
 @property (weak, nonatomic) IBOutlet UITextField *gps_topic_edit;
+@property (weak, nonatomic) IBOutlet UITextField *img_hz_edit;
+@property (weak, nonatomic) IBOutlet UISwitch *img_switch;
+@property (weak, nonatomic) IBOutlet UISwitch *imu_switch;
+@property (weak, nonatomic) IBOutlet UISwitch *gps_switch;
+
+@property (nonatomic) NSArray *camSizes;
+@property (nonatomic) NSArray<NSString *> *camSizesName;
 
 // Session management
 @property (nonatomic) dispatch_queue_t sessionQueue;
