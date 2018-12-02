@@ -5,7 +5,9 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/opencv.hpp>
 #include <rosbag/view.h>
-
+#import <ifaddrs.h>
+#import <arpa/inet.h>
+#include <sensor_msgs/NavSatFix.h>
 @implementation AVCamManualCameraViewController (Sensor)
 
 // Create a UIImage from sample buffer data
@@ -27,6 +29,50 @@
     UIImage *image = [UIImage imageWithCGImage:quartzImage];
     CGImageRelease(quartzImage);
     return image;
+}
+
+- (void) startIMUUpdate{
+    if (self.motionManager.accelerometerAvailable){
+        self.motionManager.accelerometerUpdateInterval =0.01;
+        [self.motionManager
+         startAccelerometerUpdatesToQueue:self.quene
+         withHandler:
+         ^(CMAccelerometerData *data, NSError *error){
+             //NSLog(@"acce: %@", [NSThread currentThread]);
+             if(![self.imu_switch isOn]){
+                 return;
+             }
+             std::vector<double> imu;
+             imu.resize(5);
+             imu[0]=-data.acceleration.x*9.8;
+             imu[1]=-data.acceleration.y*9.8;
+             imu[2]=-data.acceleration.z*9.8;
+             imu[3]=data.timestamp;
+             imu[4]=0;
+             acces.push_back(imu);
+         }];
+    }
+    if (self.motionManager.gyroAvailable){
+        self.motionManager.gyroUpdateInterval =0.01;
+        [self.motionManager
+         startGyroUpdatesToQueue:self.quene
+         withHandler:
+         ^(CMGyroData *data, NSError *error){
+             //NSLog(@"gyro: %@", [NSThread currentThread]);
+             if(![self.imu_switch isOn]){
+                 return;
+             }
+             std::vector<double> imu;
+             imu.resize(5);
+             imu[0]=data.rotationRate.x;
+             imu[1]=data.rotationRate.y;
+             imu[2]=data.rotationRate.z;
+             imu[3]=data.timestamp;
+             imu[4]=0;
+             gyros.push_back(imu);
+             [self processIMU_gyro];
+         }];
+    }
 }
 
 
@@ -67,31 +113,45 @@ void interDouble(double v1, double v2, double t1, double t2, double& v3_out, dou
     NSArray *dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSArray *directoryContent = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:[dirPaths objectAtIndex:0] error:NULL];
     std::map<std::string, int> re_dict;
+    double start_time;
+    double end_time;
     for (int count = 0; count < (int)[directoryContent count]; count++)
     {
         NSError *error = nil;
         NSString *full_addr = [[dirPaths objectAtIndex:0] stringByAppendingPathComponent:[directoryContent objectAtIndex:count]];
         if([filename isEqualToString:[directoryContent objectAtIndex:count]]==YES){
             rosbag::Bag bag;
-            bag.open(std::string([full_addr UTF8String]).c_str(), rosbag::bagmode::Read);
+            try{
+                bag.open(std::string([full_addr UTF8String]).c_str(), rosbag::bagmode::Read);
+            }
+            catch (...){
+                return @"bad bag!!";
+            }
+            if(!bag.isOpen()){
+                return @"bad bag!!";
+            }
             rosbag::View view(bag);
             int img_count=0;
+            start_time = view.getBeginTime().toSec();
+            end_time = view.getEndTime().toSec();
             rosbag::View::iterator it= view.begin();
             for(;it!=view.end();it++){
                 rosbag::MessageInstance m =*it;
-                std::cout<<img_count<<":"<<m.getTopic()<<std::endl;
                 if (re_dict.count(m.getTopic())==0){
                     re_dict[m.getTopic()]=1;
                 }else{
                     re_dict[m.getTopic()]=re_dict[m.getTopic()]+1;
                 }
             }
+            bag.close();
+            break;
         }
     }
     std::stringstream ss;
     for(std::map<std::string, int>::iterator it=re_dict.begin(); it!=re_dict.end(); it++){
         ss<<it->first<<": "<<it->second<<std::endl;
     }
+    ss<<"duration: "<<end_time-start_time<<"s";
     NSString *string1 = [NSString stringWithCString:ss.str().c_str() encoding:[NSString defaultCStringEncoding]];
     return string1;
 }
@@ -261,6 +321,7 @@ void send_txt(std::string contnent) {
                 static int imu_data_seq=0;
                 msg.header.seq=imu_data_seq;
                 msg.header.stamp= ros::Time(gyros[i][3]);
+                msg.header.frame_id="map";
                 if(is_publishing){
                     imu_pub.publish(msg);
                 }
@@ -268,7 +329,9 @@ void send_txt(std::string contnent) {
                     if (is_recording_bag){
                         if(bag_ptr->isOpen()){
                             NSString *temp_string =  [self.imu_topic_edit.attributedText string];
-                            bag_ptr->write((char *)[temp_string UTF8String], msg.header.stamp, msg);
+                            NSDate * t1 = [NSDate date];
+                            NSTimeInterval now = [t1 timeIntervalSince1970];
+                            bag_ptr->write((char *)[temp_string UTF8String], ros::Time(now), msg);
                         }
                     }
                 });
@@ -295,6 +358,144 @@ void send_txt(std::string contnent) {
     }
 }
 
+- (void)recordGPS:(CLLocation *)newLocation{
+    if(![self.gps_switch isOn]){
+        return;
+    }
+    sensor_msgs::NavSatFix msg;
+    msg.latitude=newLocation.coordinate.latitude;
+    msg.longitude=newLocation.coordinate.longitude;
+    msg.altitude=newLocation.altitude;
+    msg.position_covariance[0]=newLocation.horizontalAccuracy;
+    msg.position_covariance[3]=newLocation.horizontalAccuracy;
+    msg.position_covariance[6]=newLocation.verticalAccuracy;
+    static int gps_data_seq=0;
+    msg.header.seq=gps_data_seq;
+    gps_data_seq++;
+    NSDate* eventDate = newLocation.timestamp;
 
+    double time_change = [eventDate timeIntervalSinceDate:sync_sys_time];
+    double howRecent = time_change+sync_sensor_time;
+    msg.header.stamp = ros::Time(howRecent);
+    msg.header.frame_id="map";
+    if(is_publishing){
+        gps_pub.publish(msg);
+    }
+    dispatch_async( self.sessionQueue, ^{
+        if (is_recording_bag){
+            if(bag_ptr->isOpen()){
+                NSString *temp_string =  [self.gps_topic_edit.attributedText string];
+                NSDate * t1 = [NSDate date];
+                NSTimeInterval now = [t1 timeIntervalSince1970];
+                bag_ptr->write((char *)[temp_string UTF8String], ros::Time(now), msg);
+            }
+        }
+    });
+    
+}
+
++ (NSString *)getIPAddress
+{
+    struct ifaddrs *interfaces = NULL;
+    struct ifaddrs *temp_addr = NULL;
+    NSString *wifiAddress = nil;
+    NSString *usbAddress = nil;
+    
+    // retrieve the current interfaces - returns 0 on success
+    if(!getifaddrs(&interfaces)) {
+        // Loop through linked list of interfaces
+        temp_addr = interfaces;
+        while(temp_addr != NULL) {
+            sa_family_t sa_type = temp_addr->ifa_addr->sa_family;
+            if(sa_type == AF_INET || sa_type == AF_INET6) {
+                NSString *name = [NSString stringWithUTF8String:temp_addr->ifa_name];
+                NSString *addr = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)]; // pdp_ip0
+                NSLog(@"NAME: \"%@\" addr: %@", name, addr); // see for yourself
+                
+//                if([name isEqualToString:@"bridge100"]) {
+//                    if(![addr isEqualToString:@"0.0.0.0"]){
+//                        usbAddress = addr;
+//                    }
+//                }
+                if([name isEqualToString:@"en0"]) {
+                    if(![addr isEqualToString:@"0.0.0.0"]){
+                        wifiAddress = addr;
+                    }
+                }
+            }
+            temp_addr = temp_addr->ifa_next;
+        }
+        // Free memory
+        freeifaddrs(interfaces);
+    }
+    NSString *addr=nil;
+    if(usbAddress){
+        addr=usbAddress;
+    }else{
+        addr=wifiAddress;
+    }
+    return addr ? addr : @"0.0.0.0";
+}
+
+- (BOOL)connectToMaster
+{
+    if([AVCamManualCameraViewController isValidIp:[self.mater_ip_input.attributedText string]])
+    {
+        NSString * master_uri = [@"ROS_MASTER_URI=http://" stringByAppendingString:[[self.mater_ip_input.attributedText string] stringByAppendingString:@":11311/"]];
+        NSLog(@"%@",master_uri);
+        NSString * ip = [@"ROS_IP=" stringByAppendingString:[AVCamManualCameraViewController getIPAddress]];
+        NSLog(@"%@",ip);
+        putenv((char *)[master_uri UTF8String]);
+        putenv((char *)[ip UTF8String]);
+        putenv((char *)"ROS_HOME=/tmp");
+        
+        int argc = 0;
+        char ** argv = NULL;
+        if(!ros::isInitialized())
+        {
+            ros::init(argc,argv,"data_recorder");
+            if(ros::master::check())
+            {
+                NSLog(@"Connected to the ROS master !");
+                ros::NodeHandle nn;
+                NSString *temp_string =  [self.imu_topic_edit.attributedText string];
+                imu_pub = nn.advertise<sensor_msgs::Imu>((char *)[temp_string UTF8String], 10000, false);
+                temp_string =  [self.img_topic_edit.attributedText string];
+                img_pub = nn.advertise<sensor_msgs::CompressedImage>((char *)[temp_string UTF8String], 10000, false);
+                temp_string =  [self.gps_topic_edit.attributedText string];
+                gps_pub = nn.advertise<sensor_msgs::NavSatFix>((char *)[temp_string UTF8String], 10000, false);
+                self.master_sign.hidden=NO;
+                self.connectButton.enabled=NO;
+            }
+            else
+            {
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Connect fail!" message:@"Check your network !" preferredStyle:UIAlertControllerStyleAlert];
+                [self presentViewController:alert animated:YES completion:nil];
+                [self performSelector:@selector(dismiss:) withObject:alert afterDelay:2.0];
+                return false;
+                
+            }
+        }
+        else
+        {
+            NSLog(@"ROS already initialised. Can'st change the ROS_MASTER_URI");
+        }
+    }else{
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Connect fail!" message:@"Input a right ip." preferredStyle:UIAlertControllerStyleAlert];
+        [self presentViewController:alert animated:YES completion:nil];
+        [self performSelector:@selector(dismiss:) withObject:alert afterDelay:2.0];
+        NSLog(@"input a right ip !");
+        return false;
+    }
+    return true;
+}
+
++ (BOOL)isValidIp:(NSString*)string
+{
+    struct in_addr pin;
+    int success = inet_pton(AF_INET,[string UTF8String],&pin);
+    if(success == 1) return YES;
+    return NO;
+}
 
 @end

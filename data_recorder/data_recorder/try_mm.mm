@@ -7,10 +7,10 @@
 +(UIImage *) convertImag: (UIImage *)image
 {
     cv::Mat img = [mm_Try cvMatFromUIImage:image];
-    cv::Mat greyMat;
-    cv::cvtColor(img, greyMat, CV_BGR2GRAY);
+    //cv::Mat greyMat;
+    //cv::cvtColor(img, greyMat, CV_BGR2GRAY);
     //cv::resize(greyMat, greyMat, cv::Size(320,460));
-    UIImage * reImg = [mm_Try UIImageFromCVMat:greyMat];
+    UIImage * reImg = [mm_Try UIImageFromCVMat:img];
     return reImg;
 }
 

@@ -15,6 +15,8 @@ static void * ISOContext = &ISOContext;
     NSString* img_topic_ns = [defaults objectForKey:@"img_topic"];
     NSString* gps_topic_ns = [defaults objectForKey:@"gps_topic"];
     NSString* img_hz_ns = [defaults objectForKey:@"img_hz"];
+    NSString* master_ip_ns = [defaults objectForKey:@"master_ip"];
+    NSString* clinet_ip_ns = [defaults objectForKey:@"clinet_ip"];
     
     if (imu_topic_ns==nil){
         imu_topic_ns=@"imu";
@@ -28,10 +30,18 @@ static void * ISOContext = &ISOContext;
     if (img_hz_ns==nil){
         img_hz_ns=@"10";
     }
+    if (master_ip_ns==nil){
+        master_ip_ns=@"192.168.1.1";
+    }
+    if (clinet_ip_ns==nil){
+        clinet_ip_ns=@"192.168.1.1";
+    }
     [self.imu_topic_edit setText:imu_topic_ns];
     [self.img_topic_edit setText:img_topic_ns];
     [self.gps_topic_edit setText:gps_topic_ns];
     [self.img_hz_edit setText:img_hz_ns];
+    [self.mater_ip_input setText:master_ip_ns];
+    [self.clinet_ip_input setText:clinet_ip_ns];
     
     NSString* img_size_ns = [defaults objectForKey:@"img_size"];
     if (img_size_ns==nil){
@@ -480,7 +490,7 @@ static void * ISOContext = &ISOContext;
         return;
     }
     
-    self.cameraButton.enabled = NO;
+    self.connectButton.enabled = NO;
     self.recordButton.enabled = NO;
     self.pubButton.enabled = NO;
     
@@ -509,7 +519,7 @@ static void * ISOContext = &ISOContext;
         dispatch_async( dispatch_get_main_queue(), ^{
             [self configureManualHUD];
             
-            self.cameraButton.enabled = YES;
+            self.connectButton.enabled = YES;
             self.recordButton.enabled = YES;
             self.pubButton.enabled = YES;
         } );

@@ -10,6 +10,7 @@
 #import <ros/ros.h>
 #include <rosbag/bag.h>
 #include "std_msgs/String.h"
+#import <CoreLocation/CoreLocation.h>
 
 typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
     AVCamManualSetupResultSuccess,
@@ -17,10 +18,9 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
     AVCamManualSetupResultSessionConfigurationFailed
 };
 
-@interface AVCamManualCameraViewController : UIViewController<AVCaptureVideoDataOutputSampleBufferDelegate, UIPickerViewDataSource, UIPickerViewDelegate, UITextFieldDelegate>{
+@interface AVCamManualCameraViewController : UIViewController<AVCaptureVideoDataOutputSampleBufferDelegate, UIPickerViewDataSource, UIPickerViewDelegate, UITextFieldDelegate, CLLocationManagerDelegate>{
     NSMutableArray *file_list;
     NSString *sel_filename;
-    bool need_record;
     int img_count;
     int imu_count;
     bool is_recording_bag;
@@ -35,13 +35,18 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
     float cache_iso;
     ros::Publisher img_pub;
     ros::Publisher imu_pub;
+    ros::Publisher gps_pub;
     std::shared_ptr<rosbag::Bag> bag_ptr;
+    double sync_sensor_time;
+    NSDate* sync_sys_time;
 }
+@property (nonatomic, strong) CLLocationManager *locationManager;
+
 @property (strong, nonatomic) IBOutlet UIView *settingPanel;
 @property (weak, nonatomic) IBOutlet UISegmentedControl *settingGroupControl;
 @property (nonatomic, weak) IBOutlet AVCamManualPreviewView *previewView;
 @property (nonatomic, weak) IBOutlet UIButton *recordButton;
-@property (nonatomic, weak) IBOutlet UIButton *cameraButton;
+@property (nonatomic, weak) IBOutlet UIButton *connectButton;
 @property (nonatomic, weak) IBOutlet UIButton *pubButton;
 @property (weak, nonatomic) IBOutlet UIView *record_contr_view;
 
@@ -75,17 +80,23 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 @property (weak, nonatomic) IBOutlet UISwitch *img_switch;
 @property (weak, nonatomic) IBOutlet UISwitch *imu_switch;
 @property (weak, nonatomic) IBOutlet UISwitch *gps_switch;
+@property (weak, nonatomic) IBOutlet UITextField *mater_ip_input;
+@property (weak, nonatomic) IBOutlet UITextField *clinet_ip_input;
 
 @property (nonatomic) NSArray *camSizes;
 @property (nonatomic) NSArray<NSString *> *camSizesName;
 
 // Session management
 @property (nonatomic) dispatch_queue_t sessionQueue;
+@property (nonatomic) NSOperationQueue *quene;
+@property (nonatomic) CMMotionManager *motionManager;
 @property (nonatomic) AVCaptureSession *session;
 @property (nonatomic) AVCaptureDeviceInput *videoDeviceInput;
 @property (nonatomic) AVCaptureDeviceDiscoverySession *videoDeviceDiscoverySession;
 @property (nonatomic) AVCaptureDevice *videoDevice;
 @property (nonatomic) AVCaptureVideoDataOutput *video_output;
+@property (weak, nonatomic) IBOutlet UILabel *master_sign;
+@property (weak, nonatomic) IBOutlet UILabel *pub_sign;
 
 
 

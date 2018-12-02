@@ -13,5 +13,5 @@ static const float kExposureMinimumDuration = 1.0/1000; // Limit exposure durati
 - (void)focusWithMode:(AVCaptureFocusMode)focusMode exposeWithMode:(AVCaptureExposureMode)exposureMode atDevicePoint:(CGPoint)point monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange;
 - (void)subjectAreaDidChange:(NSNotification *)notification;
 - (void)changeCameraWithDevice:(AVCaptureDevice *)newVideoDevice;
-
+- (void)recordGPS:(CLLocation *)newLocation;
 @end

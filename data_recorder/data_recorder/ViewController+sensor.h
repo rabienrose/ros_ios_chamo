@@ -8,4 +8,8 @@
 - (void)changeCamSize:(int)cam_size_id;
 - (void)dismiss:(UIAlertController *)alert;
 - (NSString*)get_bag_info:(NSString *)filename;
++ (NSString *)getIPAddress;
++ (BOOL)isValidIp:(NSString*)string;
+- (BOOL)connectToMaster;
+- (void) startIMUUpdate;
 @end

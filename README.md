@@ -14,3 +14,4 @@
 - There is an example of xcode project (data_recorder) show how to use the ros in APP.
 - This code is not widely tested and are not targeted to robust, you can understand it and modify based on your situation.
 - Use sudo xcode-select -switch /Applications/Xcode.app/ to switch the compiler to xcode
+- If you find bitcode error when release the APP, clear derived data & reopen xcode: /Users/mac/Library/Developer/Xcode/DerivedData

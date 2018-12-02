@@ -10,24 +10,25 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CompressedImage.h>
 #include <sensor_msgs/image_encodings.h>
+#import "DetailViewController.h"
 
-CMMotionManager *motionManager;
 @implementation AVCamManualCameraViewController
 
 - (void)viewDidLoad
 {
 	[super viewDidLoad];
-    need_record=true;
     is_recording_bag=false;
     is_publishing=false;
     [self loadConfig];
-	self.cameraButton.enabled = NO;
+	self.connectButton.enabled = YES;
 	self.recordButton.enabled = YES;
-	self.pubButton.enabled = NO;
+	self.pubButton.enabled = YES;
 	self.manualHUDIPView.hidden = YES;
 	self.manualHUDFocusView.hidden = YES;
 	self.manualHUDExposureView.hidden = YES;
     self.record_contr_view.hidden = YES;
+    self.master_sign.hidden=YES;
+    self.pub_sign.hidden=YES;
     
     self.topicView.hidden = YES;
     self.file_view.hidden = YES;
@@ -72,53 +73,17 @@ CMMotionManager *motionManager;
     dispatch_async( self.sessionQueue, ^{
         [self configureSession];
     } );
-    NSOperationQueue *quene =[[NSOperationQueue alloc] init];
-    quene.maxConcurrentOperationCount=1;
-    motionManager = [[CMMotionManager alloc] init];
-    if (motionManager.accelerometerAvailable){
-        motionManager.accelerometerUpdateInterval =0.01;
-        [motionManager
-         startAccelerometerUpdatesToQueue:quene
-         withHandler:
-         ^(CMAccelerometerData *data, NSError *error){
-             //NSLog(@"acce: %@", [NSThread currentThread]);
-             if(need_record==true){
-                 if(![self.imu_switch isOn]){
-                     return;
-                 }
-                 std::vector<double> imu;
-                 imu.resize(5);
-                 imu[0]=-data.acceleration.x*9.8;
-                 imu[1]=-data.acceleration.y*9.8;
-                 imu[2]=-data.acceleration.z*9.8;
-                 imu[3]=data.timestamp;
-                 imu[4]=0;
-                 acces.push_back(imu);
-             }
-         }];
-    }
-    if (motionManager.gyroAvailable){
-        motionManager.gyroUpdateInterval =0.01;
-        [motionManager
-         startGyroUpdatesToQueue:quene
-         withHandler:
-         ^(CMGyroData *data, NSError *error){
-             //NSLog(@"gyro: %@", [NSThread currentThread]);
-             if(need_record== true){
-                 if(![self.imu_switch isOn]){
-                     return;
-                 }
-                 std::vector<double> imu;
-                 imu.resize(5);
-                 imu[0]=data.rotationRate.x;
-                 imu[1]=data.rotationRate.y;
-                 imu[2]=data.rotationRate.z;
-                 imu[3]=data.timestamp;
-                 imu[4]=0;
-                 gyros.push_back(imu);
-                 [self processIMU_gyro];
-             }
-         }];
+    self.quene =[[NSOperationQueue alloc] init];
+    self.quene.maxConcurrentOperationCount=1;
+    self.motionManager = [[CMMotionManager alloc] init];
+
+    _locationManager = [[CLLocationManager alloc] init];
+    self.locationManager.delegate = self;
+    self.locationManager.desiredAccuracy = 10;
+    self.locationManager.distanceFilter = 1;
+
+    if ([_locationManager respondsToSelector:@selector(requestWhenInUseAuthorization)]) {
+        [_locationManager requestWhenInUseAuthorization];
     }
 }
 
@@ -127,6 +92,8 @@ CMMotionManager *motionManager;
     [self.img_topic_edit resignFirstResponder];
     [self.gps_topic_edit resignFirstResponder];
     [self.img_hz_edit resignFirstResponder];
+    [self.mater_ip_input resignFirstResponder];
+    [self.clinet_ip_input resignFirstResponder];
     return true;
 }
 
@@ -269,17 +236,16 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     //NSLog(@"img: %@", [NSThread currentThread]);
     //NSLog(@"img: %f", timestamp.value/(double)timestamp.timescale);
     //if(false){
-    if(need_record==true){
+    CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+    sync_sensor_time = (double)timestamp.value/(double)timestamp.timescale;
+    sync_sys_time = [NSDate date];
+    if(is_recording_bag==true || is_publishing==true){
         if(![self.img_switch isOn]){
             return;
         }
-        
-        CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
-        //NSLog(@"%f", timestamp.value/(double)timestamp.timescale);
+        //NSLog(@"%f", (double)timestamp.value/(double)timestamp.timescale);
         UIImage *image = [self imageFromSampleBuffer:sampleBuffer];
         cv::Mat img_cv = [mm_Try cvMatFromUIImage:image];
-        float time_in_sec = timestamp.value/(double)timestamp.timescale;
-        
         sensor_msgs::CompressedImage img_ros_img;
         //cv::Mat img_gray;
         //cv::cvtColor(img_cv, img_gray, CV_BGRA2GRAY);
@@ -287,7 +253,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         cv::imencode(".jpg", img_cv, binaryBuffer_);
         img_ros_img.data=binaryBuffer_;
         img_ros_img.header.seq=img_count;
-        img_ros_img.header.stamp= ros::Time(time_in_sec);
+        img_ros_img.header.stamp= ros::Time(sync_sensor_time);
         img_ros_img.format="jpeg";
         if(is_publishing){
             img_pub.publish(img_ros_img);
@@ -296,7 +262,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             if(is_recording_bag){
                 if(bag_ptr->isOpen()){
                     NSString *temp_string =  [self.img_topic_edit.attributedText string];
-                    bag_ptr->write((char *)[temp_string UTF8String], img_ros_img.header.stamp, img_ros_img);
+                    NSDate * t1 = [NSDate date];
+                    NSTimeInterval now = [t1 timeIntervalSince1970];
+                    bag_ptr->write((char *)[temp_string UTF8String], ros::Time(now), img_ros_img);
                 }
             }
         });
@@ -307,20 +275,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 - (IBAction)toggleSetting:(id)sender {
     self.settingPanel.hidden = !self.settingPanel.hidden;
 }
-- (IBAction)chooseNewCamera:(id)sender
+- (IBAction)connectMasterBtn:(id)sender
 {
-    // Present all available cameras
-    UIAlertController *cameraOptionsController = [UIAlertController alertControllerWithTitle:@"Choose a camera" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil];
-    [cameraOptionsController addAction:cancelAction];
-    for ( AVCaptureDevice *device in self.videoDeviceDiscoverySession.devices ) {
-        UIAlertAction *newDeviceOption = [UIAlertAction actionWithTitle:device.localizedName style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-            [self changeCameraWithDevice:device];
-        }];
-        [cameraOptionsController addAction:newDeviceOption];
-    }
-    
-    [self presentViewController:cameraOptionsController animated:YES completion:nil];
+    [self connectToMaster];
 }
 
 - (IBAction)chooseCameraSize:(id)sender
@@ -460,6 +417,14 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [defaults setObject:[self.imu_topic_edit.attributedText string] forKey:@"imu_topic"];
     [defaults synchronize];
 }
+- (IBAction)master_ip_end:(id)sender {
+    [defaults setObject:[self.mater_ip_input.attributedText string] forKey:@"master_ip"];
+    [defaults synchronize];
+}
+- (IBAction)clinet_ip_end:(id)sender {
+    [defaults setObject:[self.clinet_ip_input.attributedText string] forKey:@"clinet_ip"];
+    [defaults synchronize];
+}
 
 - (IBAction)img_hz_end:(id)sender{
     NSError *error = nil;
@@ -528,6 +493,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 - (IBAction)toggleBagRecording:(id)sender
 {
     if(!is_recording_bag){
+        [self.locationManager startUpdatingLocation];
+        [self startIMUUpdate];
         dispatch_async( self.sessionQueue, ^{
             NSArray *dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
             NSDate *date = [NSDate date];
@@ -549,6 +516,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         self.recording_sign.hidden = NO;
         
     }else{
+        [self.locationManager stopUpdatingLocation];
+        [self.motionManager stopAccelerometerUpdates];
+        [self.motionManager stopGyroUpdates];
         is_recording_bag=false;
         dispatch_async( self.sessionQueue, ^{
             bag_ptr->close();
@@ -563,6 +533,20 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 - (IBAction)toggleMsgPublish:(id)sender
 {
+    if(!is_publishing){
+        [self.locationManager startUpdatingLocation];
+        [self startIMUUpdate];
+        is_publishing=true;
+        self.pub_sign.hidden = NO;
+        [sender setTitle:@"Stop" forState:UIControlStateNormal];
+    }else{
+        [self.motionManager stopGyroUpdates];
+        [self.locationManager stopUpdatingLocation];
+        [self.motionManager stopAccelerometerUpdates];
+        is_publishing=false;
+        self.pub_sign.hidden = YES;
+        [sender setTitle:@"Publish" forState:UIControlStateNormal];
+    }
 }
 
 - (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView{
@@ -578,9 +562,27 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if(row<file_list.count){
         sel_filename = file_list[row];
         NSString* re_info = [self get_bag_info:sel_filename];
-        NSLog(re_info);
         self.info_label.text=re_info;
     }
 }
+
+- (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation {
+    if (newLocation.horizontalAccuracy < 0) {
+        return;
+    }
+    NSTimeInterval locationAge = -[newLocation.timestamp timeIntervalSinceNow];
+    if (locationAge > 5.0) {
+        return;
+    }
+    [self recordGPS: newLocation];
+}
+- (IBAction)show_detail:(id)sender {
+    UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
+    DetailViewController *add = [storyboard instantiateViewControllerWithIdentifier:@"DetailViewController"];
+    add.filename=sel_filename;
+    
+    [self presentViewController:add animated:NO completion:nil];
+}
+
 
 @end
