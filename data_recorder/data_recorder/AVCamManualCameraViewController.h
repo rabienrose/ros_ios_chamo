@@ -24,6 +24,7 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
     int img_count;
     int imu_count;
     bool is_recording_bag;
+    bool is_sensor_on;
     bool is_publishing;
     std::vector<std::vector<double> > gyros;
     std::vector<std::vector<double> > acces;
@@ -97,6 +98,7 @@ typedef NS_ENUM( NSInteger, AVCamManualSetupResult ) {
 @property (nonatomic) AVCaptureVideoDataOutput *video_output;
 @property (weak, nonatomic) IBOutlet UILabel *master_sign;
 @property (weak, nonatomic) IBOutlet UILabel *pub_sign;
+@property (weak, nonatomic) IBOutlet UILabel *gps_sign;
 
 
 

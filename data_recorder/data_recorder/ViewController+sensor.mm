@@ -1,9 +1,9 @@
+#include <opencv2/opencv.hpp>
 #import "ViewController+sensor.h"
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CompressedImage.h>
 #include <sensor_msgs/image_encodings.h>
-#include <opencv2/opencv.hpp>
 #include <rosbag/view.h>
 #import <ifaddrs.h>
 #import <arpa/inet.h>
@@ -362,6 +362,12 @@ void send_txt(std::string contnent) {
     if(![self.gps_switch isOn]){
         return;
     }
+    if(sync_sensor_time<0){
+        return;
+    }
+    dispatch_async( dispatch_get_main_queue(), ^{
+        self.gps_sign.text=[NSString stringWithFormat:@"GPS: %d m" , (int)newLocation.horizontalAccuracy] ;
+    } );
     sensor_msgs::NavSatFix msg;
     msg.latitude=newLocation.coordinate.latitude;
     msg.longitude=newLocation.coordinate.longitude;
@@ -376,6 +382,7 @@ void send_txt(std::string contnent) {
 
     double time_change = [eventDate timeIntervalSinceDate:sync_sys_time];
     double howRecent = time_change+sync_sensor_time;
+
     msg.header.stamp = ros::Time(howRecent);
     msg.header.frame_id="map";
     if(is_publishing){

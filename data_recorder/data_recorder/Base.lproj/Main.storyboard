@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14313.18" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="zFy-Vn-e8f">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14460.31" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="zFy-Vn-e8f">
     <device id="retina6_1" orientation="landscape">
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14283.14"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14460.20"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -63,6 +63,12 @@
                                                 <color key="textColor" red="1" green="0.0" blue="0.06974860209" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                                 <nil key="highlightedColor"/>
                                             </label>
+                                            <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="GPS：" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="eLB-oc-dlC" userLabel="GPS Sign">
+                                                <rect key="frame" x="10" y="34" width="59.5" height="24"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="20"/>
+                                                <color key="textColor" red="1" green="0.0" blue="0.06974860209" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="7" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="rPp-Z6-mm2" userLabel="Info Label">
                                                 <rect key="frame" x="0.0" y="39" width="404" height="100"/>
                                                 <constraints>
@@ -76,10 +82,10 @@
                                                 <rect key="frame" x="0.0" y="196.5" width="404" height="196.5"/>
                                                 <subviews>
                                                     <button opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fCE-w2-pZQ" userLabel="Publish Button">
-                                                        <rect key="frame" x="180" y="160.5" width="80" height="36"/>
+                                                        <rect key="frame" x="140" y="160.5" width="70" height="36"/>
                                                         <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.29999999999999999" colorSpace="custom" customColorSpace="sRGB"/>
                                                         <constraints>
-                                                            <constraint firstAttribute="width" constant="80" id="zfk-3Y-Wbf"/>
+                                                            <constraint firstAttribute="width" constant="70" id="zfk-3Y-Wbf"/>
                                                         </constraints>
                                                         <fontDescription key="fontDescription" type="system" pointSize="20"/>
                                                         <state key="normal" title="Publish">
@@ -95,10 +101,10 @@
                                                         </connections>
                                                     </button>
                                                     <button opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="74U-OQ-Sqy" userLabel="Record Button">
-                                                        <rect key="frame" x="0.0" y="160.5" width="80" height="36"/>
+                                                        <rect key="frame" x="0.0" y="160.5" width="70" height="36"/>
                                                         <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.29999999999999999" colorSpace="custom" customColorSpace="sRGB"/>
                                                         <constraints>
-                                                            <constraint firstAttribute="width" constant="80" id="igL-Za-djC"/>
+                                                            <constraint firstAttribute="width" constant="70" id="igL-Za-djC"/>
                                                         </constraints>
                                                         <fontDescription key="fontDescription" type="system" pointSize="20"/>
                                                         <state key="normal" title="Record">
@@ -114,13 +120,13 @@
                                                         </connections>
                                                     </button>
                                                     <button opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="u9b-O3-ZxI" userLabel="Master Button">
-                                                        <rect key="frame" x="90" y="160.5" width="80" height="36"/>
+                                                        <rect key="frame" x="70" y="160.5" width="70" height="36"/>
                                                         <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.29999999999999999" colorSpace="custom" customColorSpace="sRGB"/>
                                                         <accessibility key="accessibilityConfiguration">
                                                             <bool key="isElement" value="NO"/>
                                                         </accessibility>
                                                         <constraints>
-                                                            <constraint firstAttribute="width" constant="80" id="c0X-3E-VxG"/>
+                                                            <constraint firstAttribute="width" constant="70" id="c0X-3E-VxG"/>
                                                         </constraints>
                                                         <fontDescription key="fontDescription" type="system" pointSize="20"/>
                                                         <state key="normal" title="Master">
@@ -136,10 +142,10 @@
                                                         </connections>
                                                     </button>
                                                     <button opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Fn9-Mj-gb8" userLabel="Setting Button">
-                                                        <rect key="frame" x="270" y="160.5" width="80" height="36"/>
+                                                        <rect key="frame" x="215" y="160.5" width="70" height="36"/>
                                                         <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.29999999999999999" colorSpace="custom" customColorSpace="sRGB"/>
                                                         <constraints>
-                                                            <constraint firstAttribute="width" constant="80" id="qsI-cQ-lWH"/>
+                                                            <constraint firstAttribute="width" constant="70" id="qsI-cQ-lWH"/>
                                                         </constraints>
                                                         <fontDescription key="fontDescription" type="system" pointSize="20"/>
                                                         <state key="normal" title="Setting">
@@ -154,17 +160,38 @@
                                                             <action selector="toggleSetting:" destination="zFy-Vn-e8f" eventType="touchUpInside" id="sBL-NM-WKr"/>
                                                         </connections>
                                                     </button>
+                                                    <button opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="XRX-VG-0CU" userLabel="Sensor Button">
+                                                        <rect key="frame" x="290" y="160.5" width="70" height="36"/>
+                                                        <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.29999999999999999" colorSpace="custom" customColorSpace="sRGB"/>
+                                                        <constraints>
+                                                            <constraint firstAttribute="width" constant="70" id="5D6-IS-5kJ"/>
+                                                        </constraints>
+                                                        <fontDescription key="fontDescription" type="system" pointSize="20"/>
+                                                        <state key="normal" title="Sensor">
+                                                            <color key="titleShadowColor" red="0.5" green="0.5" blue="0.5" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                                        </state>
+                                                        <userDefinedRuntimeAttributes>
+                                                            <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                                                                <integer key="value" value="4"/>
+                                                            </userDefinedRuntimeAttribute>
+                                                        </userDefinedRuntimeAttributes>
+                                                        <connections>
+                                                            <action selector="start_sensor:" destination="zFy-Vn-e8f" eventType="touchUpInside" id="2lr-xv-mtw"/>
+                                                        </connections>
+                                                    </button>
                                                 </subviews>
                                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <constraints>
+                                                    <constraint firstItem="XRX-VG-0CU" firstAttribute="leading" secondItem="Fn9-Mj-gb8" secondAttribute="trailing" constant="5" id="126-kw-Qq4"/>
                                                     <constraint firstAttribute="bottom" secondItem="74U-OQ-Sqy" secondAttribute="bottom" id="8fj-Dy-y4m"/>
-                                                    <constraint firstItem="u9b-O3-ZxI" firstAttribute="leading" secondItem="74U-OQ-Sqy" secondAttribute="trailing" constant="10" id="ClK-Qc-BMd"/>
+                                                    <constraint firstItem="u9b-O3-ZxI" firstAttribute="leading" secondItem="74U-OQ-Sqy" secondAttribute="trailing" id="ClK-Qc-BMd"/>
                                                     <constraint firstItem="Fn9-Mj-gb8" firstAttribute="centerY" secondItem="fCE-w2-pZQ" secondAttribute="centerY" id="DyO-Zh-KM1"/>
-                                                    <constraint firstItem="fCE-w2-pZQ" firstAttribute="leading" secondItem="u9b-O3-ZxI" secondAttribute="trailing" constant="10" id="II0-Qp-3g3"/>
+                                                    <constraint firstItem="XRX-VG-0CU" firstAttribute="centerY" secondItem="Fn9-Mj-gb8" secondAttribute="centerY" id="F4O-EH-9iv"/>
+                                                    <constraint firstItem="fCE-w2-pZQ" firstAttribute="leading" secondItem="u9b-O3-ZxI" secondAttribute="trailing" id="II0-Qp-3g3"/>
                                                     <constraint firstItem="u9b-O3-ZxI" firstAttribute="centerY" secondItem="fCE-w2-pZQ" secondAttribute="centerY" id="cmX-xu-tBe"/>
                                                     <constraint firstItem="74U-OQ-Sqy" firstAttribute="centerY" secondItem="fCE-w2-pZQ" secondAttribute="centerY" id="dSQ-o0-MVU"/>
                                                     <constraint firstItem="74U-OQ-Sqy" firstAttribute="leading" secondItem="b62-F9-FF8" secondAttribute="leading" id="mfl-na-YyA"/>
-                                                    <constraint firstItem="Fn9-Mj-gb8" firstAttribute="leading" secondItem="fCE-w2-pZQ" secondAttribute="trailing" constant="10" id="qCh-Ch-wZv"/>
+                                                    <constraint firstItem="Fn9-Mj-gb8" firstAttribute="leading" secondItem="fCE-w2-pZQ" secondAttribute="trailing" constant="5" id="qCh-Ch-wZv"/>
                                                 </constraints>
                                             </view>
                                         </subviews>
@@ -173,6 +200,7 @@
                                             <constraint firstItem="b62-F9-FF8" firstAttribute="width" secondItem="x0B-Rb-0aQ" secondAttribute="width" id="0c7-QC-RlM"/>
                                             <constraint firstItem="8Nh-iZ-lh4" firstAttribute="width" secondItem="x0B-Rb-0aQ" secondAttribute="width" id="2FO-go-byZ"/>
                                             <constraint firstItem="rPp-Z6-mm2" firstAttribute="top" secondItem="1zs-Lp-grK" secondAttribute="bottom" constant="5" id="5DW-ua-Pd3"/>
+                                            <constraint firstItem="eLB-oc-dlC" firstAttribute="top" secondItem="1zs-Lp-grK" secondAttribute="bottom" id="60r-79-Vgk"/>
                                             <constraint firstItem="1zs-Lp-grK" firstAttribute="top" secondItem="x0B-Rb-0aQ" secondAttribute="top" constant="10" id="Azx-wr-9eQ"/>
                                             <constraint firstItem="b62-F9-FF8" firstAttribute="height" secondItem="x0B-Rb-0aQ" secondAttribute="height" multiplier="0.5" id="BcS-Pb-Hqg"/>
                                             <constraint firstItem="8Nh-iZ-lh4" firstAttribute="height" secondItem="x0B-Rb-0aQ" secondAttribute="height" multiplier="0.5" id="CDD-EQ-pd3"/>
@@ -186,6 +214,7 @@
                                             <constraint firstItem="add-c2-FFx" firstAttribute="centerY" secondItem="1zs-Lp-grK" secondAttribute="centerY" id="rJf-hn-wYi"/>
                                             <constraint firstItem="rPp-Z6-mm2" firstAttribute="width" secondItem="x0B-Rb-0aQ" secondAttribute="width" id="tbH-ve-nbr"/>
                                             <constraint firstItem="rPp-Z6-mm2" firstAttribute="centerX" secondItem="x0B-Rb-0aQ" secondAttribute="centerX" id="vCt-UW-OTH"/>
+                                            <constraint firstItem="eLB-oc-dlC" firstAttribute="leading" secondItem="1zs-Lp-grK" secondAttribute="leading" id="wrN-9U-F1Z"/>
                                             <constraint firstItem="b62-F9-FF8" firstAttribute="leading" secondItem="x0B-Rb-0aQ" secondAttribute="leading" id="zxk-dl-9jT"/>
                                         </constraints>
                                     </view>
@@ -718,6 +747,7 @@
                         <outlet property="exposureModeControl" destination="k0M-zY-8lV" id="sZH-WN-1jk"/>
                         <outlet property="file_view" destination="eAc-an-5ox" id="DaN-p3-4zu"/>
                         <outlet property="focusModeControl" destination="7ql-Wj-WhT" id="jr8-HC-q8I"/>
+                        <outlet property="gps_sign" destination="eLB-oc-dlC" id="GY5-ct-861"/>
                         <outlet property="gps_switch" destination="UP9-uy-fUO" id="NO0-Ac-5Hu"/>
                         <outlet property="gps_topic_edit" destination="j2a-gZ-rW5" id="rkT-jk-irn"/>
                         <outlet property="img_hz_edit" destination="Wau-YJ-SAq" id="h3L-GI-Zhl"/>

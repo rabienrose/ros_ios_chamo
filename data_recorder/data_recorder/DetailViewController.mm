@@ -1,6 +1,6 @@
+#include <opencv2/opencv.hpp>
 #import "DetailViewController.h"
 #include "common_header.h"
-#include <opencv2/opencv.hpp>
 #include <iomanip>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
@@ -25,7 +25,7 @@ UIImage* getFrame(rosbag::Bag& bag,int frame_id, double& timestamp, std::string&
             sensor_msgs::CompressedImagePtr simg = m.instantiate<sensor_msgs::CompressedImage>();
             cv::Mat_<uchar> in(1, simg->data.size(), const_cast<uchar*>(&simg->data[0]));
             cv::Mat rgb_a = cv::imdecode(in, cv::IMREAD_UNCHANGED);
-            cv::cvtColor(rgb_a, rgb_a, CV_BGR2BGRA);
+            cv::cvtColor(rgb_a, rgb_a, cv::COLOR_BGR2BGRA);
             ui_image = [mm_Try UIImageFromCVMat:rgb_a];
             timestamp=simg->header.stamp.toSec();
             break;

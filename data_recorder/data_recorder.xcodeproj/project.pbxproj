@@ -12,11 +12,11 @@
 		04408C1321B2B7D4003C5344 /* DetailViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04408C1121B2B7D3003C5344 /* DetailViewController.mm */; };
 		04408C1521B2BF25003C5344 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04408C1421B2BF25003C5344 /* MapKit.framework */; };
 		04C9A1F42171AE0100DD0D7A /* librosbag_storage.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 04C9A1F32171AE0000DD0D7A /* librosbag_storage.a */; };
-		04EF45EB21672F2F004D35FB /* opencv2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04EF45EA21672F2E004D35FB /* opencv2.framework */; };
 		04FE080C2185A9E600D4D642 /* AVCamManualCameraViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04FE080A2185A9E500D4D642 /* AVCamManualCameraViewController.mm */; };
 		04FE080D2185A9E600D4D642 /* AVCamManualPreviewView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04FE080B2185A9E500D4D642 /* AVCamManualPreviewView.mm */; };
 		04FE080F2185BF0600D4D642 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 04FE080E2185BF0600D4D642 /* Default-568h@2x.png */; };
 		04FE08122185D94E00D4D642 /* ViewController+setting.mm in Sources */ = {isa = PBXBuildFile; fileRef = 04FE08112185D94E00D4D642 /* ViewController+setting.mm */; };
+		04FE3E6222801894001FE514 /* opencv2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04FE3E6122801894001FE514 /* opencv2.framework */; };
 		CE00FB88205D6E7B00682E6F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = CE00FB87205D6E7B00682E6F /* main.m */; };
 		CE00FB8B205D6E7B00682E6F /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = CE00FB8A205D6E7B00682E6F /* AppDelegate.m */; };
 		CE00FB91205D6E7B00682E6F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = CE00FB8F205D6E7B00682E6F /* Main.storyboard */; };
@@ -54,6 +54,7 @@
 		04FE080E2185BF0600D4D642 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
 		04FE08102185D94E00D4D642 /* ViewController+setting.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ViewController+setting.h"; sourceTree = "<group>"; };
 		04FE08112185D94E00D4D642 /* ViewController+setting.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = "ViewController+setting.mm"; sourceTree = "<group>"; };
+		04FE3E6122801894001FE514 /* opencv2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = opencv2.framework; path = ../lib/opencv2.framework; sourceTree = "<group>"; };
 		CE00FB83205D6E7B00682E6F /* data_recorder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = data_recorder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE00FB87205D6E7B00682E6F /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		CE00FB89205D6E7B00682E6F /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -87,10 +88,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				04FE3E6222801894001FE514 /* opencv2.framework in Frameworks */,
 				04408C1521B2BF25003C5344 /* MapKit.framework in Frameworks */,
 				04213EC421B2A1C9004B4F53 /* CoreLocation.framework in Frameworks */,
 				04C9A1F42171AE0100DD0D7A /* librosbag_storage.a in Frameworks */,
-				04EF45EB21672F2F004D35FB /* opencv2.framework in Frameworks */,
 				CE71E3852081CBCB0028705F /* CoreMotion.framework in Frameworks */,
 				CEDEB6BC205E94D300782DAC /* CoreMedia.framework in Frameworks */,
 				CEDEB6BA205E948900782DAC /* AVFoundation.framework in Frameworks */,
@@ -165,6 +166,7 @@
 		CE00FB9D205D6EDC00682E6F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				04FE3E6122801894001FE514 /* opencv2.framework */,
 				04408C1421B2BF25003C5344 /* MapKit.framework */,
 				04213EC321B2A1C9004B4F53 /* CoreLocation.framework */,
 				04C9A1F32171AE0000DD0D7A /* librosbag_storage.a */,
@@ -395,7 +397,7 @@
 				DEVELOPMENT_TEAM = Q84JA4R9R7;
 				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../thirdparty\"",
+					"\"$(SRCROOT)/../lib\"",
 					"$(PROJECT_DIR)",
 				);
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -405,7 +407,7 @@
 					"\"$(SRCROOT)/../thirdparty/boost/include\"",
 				);
 				INFOPLIST_FILE = data_recorder/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../thirdparty/boost/ios\"",
@@ -428,7 +430,7 @@
 				DEVELOPMENT_TEAM = Q84JA4R9R7;
 				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../thirdparty\"",
+					"\"$(SRCROOT)/../lib\"",
 					"$(PROJECT_DIR)",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -437,7 +439,7 @@
 					"\"$(SRCROOT)/../thirdparty/boost/include\"",
 				);
 				INFOPLIST_FILE = data_recorder/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../thirdparty/boost/ios\"",

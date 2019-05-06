@@ -1,10 +1,10 @@
+#include <opencv2/opencv.hpp>
 #import "AVCamManualCameraViewController.h"
 #import "ViewController+setting.h"
 #import "ViewController+sensor.h"
 #import <ifaddrs.h>
 #import <arpa/inet.h>
 #include "common_header.h"
-#include <opencv2/opencv.hpp>
 #include <iomanip>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
@@ -19,6 +19,9 @@
 	[super viewDidLoad];
     is_recording_bag=false;
     is_publishing=false;
+    is_sensor_on=false;
+    [sync_sys_time init];
+    sync_sensor_time =-1;
     [self loadConfig];
 	self.connectButton.enabled = YES;
 	self.recordButton.enabled = YES;
@@ -106,7 +109,6 @@
 			case AVCamManualSetupResultSuccess:
 			{
 				[self addObservers];
-				[self.session startRunning];
 				break;
 			}
 			case AVCamManualSetupResultCameraNotAuthorized:
@@ -493,8 +495,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 - (IBAction)toggleBagRecording:(id)sender
 {
     if(!is_recording_bag){
-        [self.locationManager startUpdatingLocation];
-        [self startIMUUpdate];
         dispatch_async( self.sessionQueue, ^{
             NSArray *dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
             NSDate *date = [NSDate date];
@@ -514,11 +514,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         //[self update_baglist];
         [sender setTitle:@"Stop" forState:UIControlStateNormal];
         self.recording_sign.hidden = NO;
-        
     }else{
-        [self.locationManager stopUpdatingLocation];
-        [self.motionManager stopAccelerometerUpdates];
-        [self.motionManager stopGyroUpdates];
         is_recording_bag=false;
         dispatch_async( self.sessionQueue, ^{
             bag_ptr->close();
@@ -534,15 +530,10 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 - (IBAction)toggleMsgPublish:(id)sender
 {
     if(!is_publishing){
-        [self.locationManager startUpdatingLocation];
-        [self startIMUUpdate];
         is_publishing=true;
         self.pub_sign.hidden = NO;
         [sender setTitle:@"Stop" forState:UIControlStateNormal];
     }else{
-        [self.motionManager stopGyroUpdates];
-        [self.locationManager stopUpdatingLocation];
-        [self.motionManager stopAccelerometerUpdates];
         is_publishing=false;
         self.pub_sign.hidden = YES;
         [sender setTitle:@"Publish" forState:UIControlStateNormal];
@@ -582,6 +573,26 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     add.filename=sel_filename;
     
     [self presentViewController:add animated:NO completion:nil];
+}
+
+- (IBAction)start_sensor:(id)sender {
+    if(!is_sensor_on){
+        [self.locationManager startUpdatingLocation];
+        [self startIMUUpdate];
+        [self.session startRunning];
+        is_sensor_on=true;
+        self.gps_sign.hidden = NO;
+        self.gps_sign.text=@"GPS: nan m";
+        [sender setTitle:@"Stop" forState:UIControlStateNormal];
+    }else{
+        [self.locationManager stopUpdatingLocation];
+        [self.motionManager stopGyroUpdates];
+        [self.motionManager stopAccelerometerUpdates];
+        [self.session stopRunning];
+        is_sensor_on=false;
+        self.gps_sign.hidden = YES;
+        [sender setTitle:@"Sensor" forState:UIControlStateNormal];
+    }
 }
 
 
