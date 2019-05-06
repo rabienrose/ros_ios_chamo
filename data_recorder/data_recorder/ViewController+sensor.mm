@@ -8,6 +8,7 @@
 #import <ifaddrs.h>
 #import <arpa/inet.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <math.h>
 @implementation AVCamManualCameraViewController (Sensor)
 
 // Create a UIImage from sample buffer data
@@ -358,6 +359,51 @@ void send_txt(std::string contnent) {
     }
 }
 
+double pi = 3.1415926535897932384626;
+double a = 6378245.0;
+double ee = 0.00669342162296594323;
+
+
+bool outOfChina(double lat, double lon) {
+    if (lon < 72.004 || lon > 137.8347) return true;
+    if (lat < 0.8293 || lat > 55.8271) return true;
+    return false;
+}
+
+double transformLat(double x, double y) {
+    double ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y
+    + 0.2 * sqrt(fabs(x));
+    ret += (20.0 * sin(6.0 * x * pi) + 20.0 * sin(2.0 * x * pi)) * 2.0 / 3.0;
+    ret += (20.0 * sin(y * pi) + 40.0 * sin(y / 3.0 * pi)) * 2.0 / 3.0;
+    ret += (160.0 * sin(y / 12.0 * pi) + 320 * sin(y * pi / 30.0)) * 2.0 / 3.0;
+    return ret;
+}
+double transformLon(double x, double y) {
+    double ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1* sqrt(fabs(x));
+    ret += (20.0 * sin(6.0 * x * pi) + 20.0 * sin(2.0 * x * pi)) * 2.0 / 3.0;
+    ret += (20.0 * sin(x * pi) + 40.0 * sin(x / 3.0 * pi)) * 2.0 / 3.0;
+    ret += (150.0 * sin(x / 12.0 * pi) + 300.0 * sin(x / 30.0 * pi)) * 2.0 / 3.0;
+    return ret;
+}
+
+void gps84_To_Gcj02(double& lat, double& lon) {
+    if (outOfChina(lat, lon)) {
+        return;
+    }
+    double dLat = transformLat(lon - 105.0, lat - 35.0);
+    double dLon = transformLon(lon - 105.0, lat - 35.0);
+    double radLat = lat / 180.0 * pi;
+    double magic = sin(radLat);
+    magic = 1 - ee * magic * magic;
+    double sqrtMagic = sqrt(magic);
+    dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * pi);
+    dLon = (dLon * 180.0) / (a / sqrtMagic * cos(radLat) * pi);
+    lat = lat + dLat;
+    lon = lon + dLon;
+}
+
+    
+
 - (void)recordGPS:(CLLocation *)newLocation{
     if(![self.gps_switch isOn]){
         return;
@@ -371,6 +417,7 @@ void send_txt(std::string contnent) {
     sensor_msgs::NavSatFix msg;
     msg.latitude=newLocation.coordinate.latitude;
     msg.longitude=newLocation.coordinate.longitude;
+    gps84_To_Gcj02(msg.latitude, msg.longitude);
     msg.altitude=newLocation.altitude;
     msg.position_covariance[0]=newLocation.horizontalAccuracy;
     msg.position_covariance[3]=newLocation.horizontalAccuracy;
